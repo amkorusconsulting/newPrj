@@ -338,8 +338,9 @@
                                         </div>
                                     </td>
                                     <td>
-                                        <% if (user.is_admin && p.role !== 'initiator' && !['closed','approved','rejected','withdrawn'].includes(deal.status)) { %>
-                                            <form method="POST" action="/deals/<%= deal.id %>/participants/<%= p.id %>/remove" style="display:inline">
+                                        <% if (user.is_admin && !['closed','approved','rejected','withdrawn'].includes(deal.status)) { %>
+                                            <form method="POST" action="/deals/<%= deal.id %>/participants/<%= p.id %>/remove" style="display:inline"
+                                                  <% if (p.role === 'initiator') { %>onsubmit="return confirm('Удалить инициатора? Не забудьте назначить нового.')"<% } %>>
                                                 <button class="btn btn-sm btn-danger">×</button>
                                             </form>
                                         <% } %>
@@ -361,6 +362,7 @@
                                 <% }) %>
                             </select>
                             <select name="role" required>
+                                <option value="initiator">Инициатор</option>
                                 <option value="invited_approver">Согласующий</option>
                                 <option value="observer">Наблюдатель</option>
                             </select>

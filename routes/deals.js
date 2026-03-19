@@ -247,6 +247,18 @@ router.post('/deals/:id/participants', authRequired, adminRequired, async (req, 
     const { user_id, role } = req.body;
 
     try {
+        // Если назначаем нового инициатора — убираем старого
+        if (role === 'initiator') {
+            await pool.query(
+                "DELETE FROM deal_participants WHERE deal_id = $1 AND role = 'initiator'",
+                [id]
+            );
+            await pool.query(
+                'UPDATE deals SET initiator_id = $1 WHERE id = $2',
+                [user_id, id]
+            );
+        }
+
         await pool.query(
             'INSERT INTO deal_participants (deal_id, user_id, role) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING',
             [id, user_id, role]
@@ -269,6 +281,12 @@ router.post('/deals/:id/participants/:pid/remove', authRequired, adminRequired, 
     const { id, pid } = req.params;
 
     try {
+        // Проверяем, удаляем ли инициатора
+        const part = await pool.query('SELECT role, user_id FROM deal_participants WHERE id = $1 AND deal_id = $2', [pid, id]);
+        if (part.rows.length > 0 && part.rows[0].role === 'initiator') {
+            await pool.query('UPDATE deals SET initiator_id = NULL WHERE id = $1', [id]);
+        }
+
         await pool.query('DELETE FROM deal_participants WHERE id = $1 AND deal_id = $2', [pid, id]);
 
         await pool.query(
