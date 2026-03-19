@@ -13,7 +13,9 @@ router.get('/users', authRequired, adminRequired, async (req, res) => {
                     EXISTS(SELECT 1 FROM permanent_approvers pa WHERE pa.user_id = u.id) AS is_permanent_approver
              FROM users u ORDER BY u.created_at DESC`
         );
-        res.render('users', { user: req.user, users: result.rows, error: null, success: null });
+        const error = req.query.error === 'short_password' ? 'Пароль должен быть не менее 6 символов' : null;
+        const success = req.query.success === 'password_changed' ? 'Пароль изменён' : null;
+        res.render('users', { user: req.user, users: result.rows, error, success });
     } catch (err) {
         console.error('Users list error:', err);
         res.status(500).send('Ошибка сервера');
@@ -86,6 +88,25 @@ router.post('/users/:id/approver/remove', authRequired, adminRequired, async (re
         res.redirect('/users');
     } catch (err) {
         console.error('Remove approver error:', err);
+        res.status(500).send('Ошибка сервера');
+    }
+});
+
+// Смена пароля
+router.post('/users/:id/password', authRequired, adminRequired, async (req, res) => {
+    const { id } = req.params;
+    const { password } = req.body;
+
+    if (!password || password.length < 6) {
+        return res.redirect('/users?error=short_password');
+    }
+
+    try {
+        const hash = await bcrypt.hash(password, 10);
+        await pool.query('UPDATE users SET password_hash = $1 WHERE id = $2', [hash, id]);
+        res.redirect('/users?success=password_changed');
+    } catch (err) {
+        console.error('Change password error:', err);
         res.status(500).send('Ошибка сервера');
     }
 });

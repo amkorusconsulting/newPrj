@@ -213,6 +213,21 @@
         .actions { display: flex; gap: 6px; }
 
         .actions form { display: inline; }
+
+        .pwd-form {
+            display: none;
+            margin-top: 6px;
+        }
+
+        .pwd-form.open { display: flex; gap: 4px; }
+
+        .pwd-form input {
+            padding: 4px 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 12px;
+            width: 140px;
+        }
     </style>
 </head>
 <body>
@@ -314,6 +329,14 @@
                                             <button class="btn btn-sm btn-danger">- Согласующий</button>
                                         </form>
                                     <% } %>
+
+                                    <button class="btn btn-sm btn-outline" onclick="togglePwd(<%= u.id %>)">Пароль</button>
+                                </div>
+                                <div class="pwd-form" id="pwd-<%= u.id %>">
+                                    <form method="POST" action="/users/<%= u.id %>/password" style="display:flex; gap:4px;">
+                                        <input type="password" name="password" minlength="6" required placeholder="Новый пароль">
+                                        <button class="btn btn-sm btn-primary">OK</button>
+                                    </form>
                                 </div>
                             </td>
                         </tr>
@@ -322,5 +345,14 @@
             </table>
         </div>
     </div>
+    <script>
+        function togglePwd(id) {
+            const el = document.getElementById('pwd-' + id);
+            el.classList.toggle('open');
+            if (el.classList.contains('open')) {
+                el.querySelector('input').focus();
+            }
+        }
+    </script>
 </body>
 </html>
