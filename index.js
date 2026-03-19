@@ -6,6 +6,7 @@ const path = require('path');
 
 const authRoutes = require('./routes/auth');
 const dashboardRoutes = require('./routes/dashboard');
+const usersRoutes = require('./routes/users');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -32,6 +33,7 @@ app.get('/', (req, res) => {
 
 app.use(authRoutes);
 app.use(dashboardRoutes);
+app.use(usersRoutes);
 
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`Корус СПР запущен: http://0.0.0.0:${PORT}`);

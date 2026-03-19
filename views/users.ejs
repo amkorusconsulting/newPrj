@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Корус СПР — Пользователи</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f0f2f5;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: #1e3a5f;
+            color: #fff;
+            padding: 16px 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 { font-size: 18px; font-weight: 600; }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            font-size: 14px;
+        }
+
+        .header-right a {
+            color: #aac4e0;
+            text-decoration: none;
+        }
+
+        .header-right a:hover { color: #fff; }
+
+        .badge {
+            background: #2d5a87;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+        }
+
+        nav {
+            background: #fff;
+            border-bottom: 1px solid #e0e0e0;
+            padding: 0 32px;
+        }
+
+        nav a {
+            display: inline-block;
+            padding: 12px 16px;
+            text-decoration: none;
+            color: #666;
+            font-size: 14px;
+            font-weight: 500;
+            border-bottom: 2px solid transparent;
+        }
+
+        nav a:hover { color: #1e3a5f; }
+        nav a.active { color: #1e3a5f; border-bottom-color: #1e3a5f; }
+
+        .container {
+            max-width: 1100px;
+            margin: 32px auto;
+            padding: 0 24px;
+        }
+
+        .alert {
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+
+        .alert-error { background: #fee; color: #c33; }
+        .alert-success { background: #efe; color: #2a7a2a; }
+
+        .card {
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .card h2 {
+            font-size: 16px;
+            color: #333;
+            margin-bottom: 16px;
+        }
+
+        .form-row {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            align-items: flex-end;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .form-group label {
+            font-size: 13px;
+            color: #666;
+            font-weight: 500;
+        }
+
+        .form-group input {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            outline: none;
+        }
+
+        .form-group input:focus {
+            border-color: #2d5a87;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding-bottom: 4px;
+        }
+
+        .checkbox-group label {
+            font-size: 13px;
+            color: #666;
+        }
+
+        .btn {
+            padding: 8px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-primary { background: #1e3a5f; color: #fff; }
+        .btn-primary:hover { background: #2d5a87; }
+
+        .btn-sm {
+            padding: 4px 12px;
+            font-size: 12px;
+        }
+
+        .btn-success { background: #2e7d32; color: #fff; }
+        .btn-success:hover { background: #388e3c; }
+
+        .btn-danger { background: #c62828; color: #fff; }
+        .btn-danger:hover { background: #d32f2f; }
+
+        .btn-warning { background: #e65100; color: #fff; }
+        .btn-warning:hover { background: #ef6c00; }
+
+        .btn-outline {
+            background: #fff;
+            color: #666;
+            border: 1px solid #ddd;
+        }
+
+        .btn-outline:hover {
+            background: #f5f5f5;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            text-align: left;
+            padding: 10px 16px;
+            font-size: 13px;
+            color: #666;
+            font-weight: 600;
+            border-bottom: 1px solid #eee;
+        }
+
+        td {
+            padding: 10px 16px;
+            font-size: 14px;
+            color: #333;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        tr:hover { background: #f9fbfd; }
+
+        .tag {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .tag-admin { background: #e3f2fd; color: #1565c0; }
+        .tag-approver { background: #e8f5e9; color: #2e7d32; }
+        .tag-inactive { background: #fce4ec; color: #c62828; }
+
+        .actions { display: flex; gap: 6px; }
+
+        .actions form { display: inline; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Корус СПР</h1>
+        <div class="header-right">
+            <span><%= user.name %></span>
+            <span class="badge">Администратор</span>
+            <a href="/logout">Выйти</a>
+        </div>
+    </div>
+
+    <nav>
+        <a href="/dashboard">Сделки</a>
+        <a href="/users" class="active">Пользователи</a>
+    </nav>
+
+    <div class="container">
+        <% if (error) { %>
+            <div class="alert alert-error"><%= error %></div>
+        <% } %>
+        <% if (success) { %>
+            <div class="alert alert-success"><%= success %></div>
+        <% } %>
+
+        <div class="card">
+            <h2>Новый пользователь</h2>
+            <form method="POST" action="/users">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Имя</label>
+                        <input type="text" name="name" required placeholder="Иванов Иван">
+                    </div>
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" name="email" required placeholder="user@company.com">
+                    </div>
+                    <div class="form-group">
+                        <label>Пароль</label>
+                        <input type="password" name="password" required minlength="6" placeholder="Минимум 6 символов">
+                    </div>
+                    <div class="checkbox-group">
+                        <input type="checkbox" name="is_admin" id="is_admin">
+                        <label for="is_admin">Админ</label>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Создать</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="card">
+            <h2>Пользователи (<%= users.length %>)</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Имя</th>
+                        <th>Email</th>
+                        <th>Роли</th>
+                        <th>Статус</th>
+                        <th>Действия</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% users.forEach(u => { %>
+                        <tr>
+                            <td><%= u.name %></td>
+                            <td><%= u.email %></td>
+                            <td>
+                                <% if (u.is_admin) { %>
+                                    <span class="tag tag-admin">Админ</span>
+                                <% } %>
+                                <% if (u.is_permanent_approver) { %>
+                                    <span class="tag tag-approver">Согласующий</span>
+                                <% } %>
+                            </td>
+                            <td>
+                                <% if (u.is_active) { %>
+                                    Активен
+                                <% } else { %>
+                                    <span class="tag tag-inactive">Отключён</span>
+                                <% } %>
+                            </td>
+                            <td>
+                                <div class="actions">
+                                    <% if (u.id !== user.id) { %>
+                                        <form method="POST" action="/users/<%= u.id %>/toggle">
+                                            <button class="btn btn-sm <%= u.is_active ? 'btn-warning' : 'btn-success' %>">
+                                                <%= u.is_active ? 'Отключить' : 'Включить' %>
+                                            </button>
+                                        </form>
+                                    <% } %>
+
+                                    <% if (!u.is_permanent_approver) { %>
+                                        <form method="POST" action="/users/<%= u.id %>/approver/add">
+                                            <button class="btn btn-sm btn-outline">+ Согласующий</button>
+                                        </form>
+                                    <% } else { %>
+                                        <form method="POST" action="/users/<%= u.id %>/approver/remove">
+                                            <button class="btn btn-sm btn-danger">- Согласующий</button>
+                                        </form>
+                                    <% } %>
+                                </div>
+                            </td>
+                        </tr>
+                    <% }) %>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</body>
+</html>
