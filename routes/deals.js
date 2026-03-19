@@ -22,9 +22,17 @@ router.get('/deals/new', authRequired, adminRequired, async (req, res) => {
     }
 });
 
+// Собрать deadline из даты и времени
+function buildDeadline(date, time) {
+    if (!date) return null;
+    const t = time || '23:59';
+    return `${date}T${t}`;
+}
+
 // Создание сделки — сохранение
 router.post('/deals', authRequired, adminRequired, async (req, res) => {
-    const { client, department, subject, amount, deadline, initiator_id } = req.body;
+    const { client, department, subject, amount, deadline_date, deadline_time, initiator_id } = req.body;
+    const deadline = buildDeadline(deadline_date, deadline_time);
 
     const client2 = await pool.connect();
     try {
@@ -183,7 +191,8 @@ router.get('/deals/:id/edit', authRequired, adminRequired, async (req, res) => {
 // Редактирование сделки — сохранение
 router.post('/deals/:id/edit', authRequired, adminRequired, async (req, res) => {
     const { id } = req.params;
-    const { client, department, subject, amount, deadline, initiator_id } = req.body;
+    const { client, department, subject, amount, deadline_date, deadline_time, initiator_id } = req.body;
+    const deadline = buildDeadline(deadline_date, deadline_time);
 
     const client2 = await pool.connect();
     try {
