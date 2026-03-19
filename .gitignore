@@ -1,0 +1,13 @@
+node_modules/
+.env
+uploads/
+.ssh/
+.bash_history
+.bashrc
+.profile
+.cache/
+.gitconfig
+.lesshst
+.claude/
+.claude.json
+snap/
