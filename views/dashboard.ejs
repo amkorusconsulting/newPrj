@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Корус СПР — Сделки</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f0f2f5;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: #1e3a5f;
+            color: #fff;
+            padding: 16px 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            font-size: 14px;
+        }
+
+        .header-right a {
+            color: #aac4e0;
+            text-decoration: none;
+        }
+
+        .header-right a:hover {
+            color: #fff;
+        }
+
+        .badge {
+            background: #2d5a87;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 32px auto;
+            padding: 0 24px;
+        }
+
+        .welcome {
+            margin-bottom: 24px;
+            font-size: 15px;
+            color: #555;
+        }
+
+        table {
+            width: 100%;
+            background: #fff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border-collapse: collapse;
+        }
+
+        th {
+            background: #f7f8fa;
+            text-align: left;
+            padding: 12px 16px;
+            font-size: 13px;
+            color: #666;
+            font-weight: 600;
+            border-bottom: 1px solid #eee;
+        }
+
+        td {
+            padding: 12px 16px;
+            font-size: 14px;
+            color: #333;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        tr:hover {
+            background: #f9fbfd;
+        }
+
+        .status {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .status-draft { background: #eee; color: #666; }
+        .status-active { background: #e3f2fd; color: #1565c0; }
+        .status-approved { background: #e8f5e9; color: #2e7d32; }
+        .status-rejected { background: #fce4ec; color: #c62828; }
+        .status-withdrawn { background: #fff3e0; color: #e65100; }
+        .status-closed { background: #f3e5f5; color: #6a1b9a; }
+
+        .empty {
+            text-align: center;
+            padding: 48px;
+            color: #999;
+            font-size: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Корус СПР</h1>
+        <div class="header-right">
+            <span><%= user.name %></span>
+            <% if (user.is_admin) { %>
+                <span class="badge">Администратор</span>
+            <% } %>
+            <a href="/logout">Выйти</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="welcome">Сделки</div>
+
+        <% if (deals.length === 0) { %>
+            <div class="empty">Нет сделок</div>
+        <% } else { %>
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Клиент</th>
+                        <th>Предмет</th>
+                        <th>Сумма</th>
+                        <th>Инициатор</th>
+                        <th>Срок</th>
+                        <th>Статус</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% deals.forEach(deal => { %>
+                        <tr>
+                            <td><%= deal.id %></td>
+                            <td><%= deal.client %></td>
+                            <td><%= deal.subject %></td>
+                            <td><%= deal.amount ? Number(deal.amount).toLocaleString('ru-RU') : '—' %></td>
+                            <td><%= deal.initiator_name || '—' %></td>
+                            <td><%= deal.deadline ? new Date(deal.deadline).toLocaleDateString('ru-RU') : '—' %></td>
+                            <td><span class="status status-<%= deal.status %>"><%= deal.status %></span></td>
+                        </tr>
+                    <% }) %>
+                </tbody>
+            </table>
+        <% } %>
+    </div>
+</body>
+</html>

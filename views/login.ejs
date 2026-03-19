@@ -86,6 +86,16 @@
         button:hover {
             background: #2d5a87;
         }
+
+        .error {
+            background: #fee;
+            color: #c33;
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 14px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
@@ -94,6 +104,9 @@
             <h1>Корус СПР</h1>
             <p>Система принятия решений</p>
         </div>
+        <% if (error) { %>
+            <div class="error"><%= error %></div>
+        <% } %>
         <form action="/login" method="POST">
             <div class="form-group">
                 <label for="email">Email</label>
