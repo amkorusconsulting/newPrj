@@ -305,15 +305,60 @@
 
                     <% if (canUpload) { %>
                         <div style="margin-top:16px; padding-top:16px; border-top:1px solid #eee;">
-                            <form method="POST" action="/deals/<%= deal.id %>/documents" enctype="multipart/form-data">
-                                <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-                                    <input type="file" name="files" multiple required
-                                           style="font-size:13px;">
-                                    <button class="btn btn-sm btn-primary">Загрузить</button>
-                                </div>
-                                <p style="font-size:11px; color:#999; margin-top:6px;">Можно выбрать несколько файлов. Макс. 50 МБ на файл.</p>
-                            </form>
+                            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                                <input type="file" id="fileInput" multiple style="font-size:13px;">
+                                <button class="btn btn-sm btn-primary" id="uploadBtn" onclick="uploadFiles()">Загрузить</button>
+                            </div>
+                            <p id="uploadStatus" style="font-size:11px; color:#999; margin-top:6px;">Можно выбрать несколько файлов. Макс. 50 МБ на файл.</p>
                         </div>
+                        <script>
+                            function uploadFiles() {
+                                var input = document.getElementById('fileInput');
+                                if (!input.files.length) { alert('Выберите файлы'); return; }
+
+                                var formData = new FormData();
+                                for (var i = 0; i < input.files.length; i++) {
+                                    formData.append('files', input.files[i]);
+                                }
+
+                                var btn = document.getElementById('uploadBtn');
+                                var status = document.getElementById('uploadStatus');
+                                btn.disabled = true;
+                                btn.textContent = 'Загрузка...';
+                                status.style.color = '#1e3a5f';
+                                status.textContent = 'Загружаем файлы...';
+
+                                var xhr = new XMLHttpRequest();
+                                xhr.open('POST', '/deals/<%= deal.id %>/documents');
+
+                                xhr.upload.onprogress = function(e) {
+                                    if (e.lengthComputable) {
+                                        var pct = Math.round(e.loaded / e.total * 100);
+                                        status.textContent = 'Загрузка: ' + pct + '%';
+                                    }
+                                };
+
+                                xhr.onload = function() {
+                                    if (xhr.status === 200 || xhr.status === 302) {
+                                        window.location.reload();
+                                    } else {
+                                        status.style.color = '#c33';
+                                        status.textContent = 'Ошибка загрузки: ' + xhr.status;
+                                        btn.disabled = false;
+                                        btn.textContent = 'Загрузить';
+                                    }
+                                };
+
+                                xhr.onerror = function() {
+                                    status.style.color = '#c33';
+                                    status.textContent = 'Ошибка сети';
+                                    btn.disabled = false;
+                                    btn.textContent = 'Загрузить';
+                                };
+
+                                xhr.send(formData);
+                            }
+                        </script>
                     <% } %>
                 </div>
             </div>

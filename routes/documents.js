@@ -57,10 +57,15 @@ router.post('/deals/:id/documents', authRequired, upload.array('files', 20), asy
             );
         }
 
-        res.redirect(`/deals/${id}`);
+        // XHR-запрос — JSON, обычный — редирект
+        if (req.xhr || (req.headers.accept && req.headers.accept.indexOf('json') > -1)) {
+            res.json({ ok: true, count: req.files.length });
+        } else {
+            res.redirect(`/deals/${id}`);
+        }
     } catch (err) {
         console.error('Upload error:', err);
-        res.status(500).send('Ошибка сервера');
+        res.status(500).json({ ok: false, error: 'Ошибка сервера' });
     }
 });
 
