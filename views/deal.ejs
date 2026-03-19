@@ -304,60 +304,77 @@
                     <% } %>
 
                     <% if (canUpload) { %>
-                        <div style="margin-top:16px; padding-top:16px; border-top:1px solid #eee;">
-                            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-                                <input type="file" id="fileInput" multiple style="font-size:13px;">
-                                <button class="btn btn-sm btn-primary" id="uploadBtn" onclick="uploadFiles()">Загрузить</button>
-                            </div>
-                            <p id="uploadStatus" style="font-size:11px; color:#999; margin-top:6px;">Можно выбрать несколько файлов. Макс. 50 МБ на файл.</p>
+                        <div id="dropZone" style="margin-top:16px; padding:32px 16px; border:2px dashed #ccc; border-radius:8px; text-align:center; cursor:pointer; transition: all 0.2s;">
+                            <p id="dropText" style="font-size:14px; color:#888; margin:0;">Перетащите файлы сюда</p>
+                            <p style="font-size:11px; color:#aaa; margin-top:4px;">или нажмите для выбора · макс. 50 МБ на файл</p>
+                            <input type="file" id="fileInput" multiple style="display:none;">
                         </div>
                         <script>
-                            function uploadFiles() {
-                                var input = document.getElementById('fileInput');
-                                if (!input.files.length) { alert('Выберите файлы'); return; }
+                        (function() {
+                            var zone = document.getElementById('dropZone');
+                            var input = document.getElementById('fileInput');
+                            var text = document.getElementById('dropText');
 
-                                var formData = new FormData();
-                                for (var i = 0; i < input.files.length; i++) {
-                                    formData.append('files', input.files[i]);
-                                }
+                            zone.addEventListener('click', function() { input.click(); });
 
-                                var btn = document.getElementById('uploadBtn');
-                                var status = document.getElementById('uploadStatus');
-                                btn.disabled = true;
-                                btn.textContent = 'Загрузка...';
-                                status.style.color = '#1e3a5f';
-                                status.textContent = 'Загружаем файлы...';
+                            zone.addEventListener('dragover', function(e) {
+                                e.preventDefault();
+                                zone.style.borderColor = '#1e3a5f';
+                                zone.style.background = '#f0f4f8';
+                            });
+
+                            zone.addEventListener('dragleave', function() {
+                                zone.style.borderColor = '#ccc';
+                                zone.style.background = '';
+                            });
+
+                            zone.addEventListener('drop', function(e) {
+                                e.preventDefault();
+                                zone.style.borderColor = '#ccc';
+                                zone.style.background = '';
+                                if (e.dataTransfer.files.length) sendFiles(e.dataTransfer.files);
+                            });
+
+                            input.addEventListener('change', function() {
+                                if (input.files.length) sendFiles(input.files);
+                            });
+
+                            function sendFiles(files) {
+                                var fd = new FormData();
+                                for (var i = 0; i < files.length; i++) fd.append('files', files[i]);
+
+                                text.textContent = 'Загрузка...';
+                                zone.style.borderColor = '#1e3a5f';
+                                zone.style.pointerEvents = 'none';
 
                                 var xhr = new XMLHttpRequest();
                                 xhr.open('POST', '/deals/<%= deal.id %>/documents');
 
                                 xhr.upload.onprogress = function(e) {
                                     if (e.lengthComputable) {
-                                        var pct = Math.round(e.loaded / e.total * 100);
-                                        status.textContent = 'Загрузка: ' + pct + '%';
+                                        text.textContent = 'Загрузка: ' + Math.round(e.loaded / e.total * 100) + '%';
                                     }
                                 };
 
                                 xhr.onload = function() {
-                                    if (xhr.status === 200 || xhr.status === 302) {
+                                    if (xhr.status >= 200 && xhr.status < 400) {
                                         window.location.reload();
                                     } else {
-                                        status.style.color = '#c33';
-                                        status.textContent = 'Ошибка загрузки: ' + xhr.status;
-                                        btn.disabled = false;
-                                        btn.textContent = 'Загрузить';
+                                        text.textContent = 'Ошибка: ' + xhr.status;
+                                        text.style.color = '#c33';
+                                        zone.style.pointerEvents = '';
                                     }
                                 };
 
                                 xhr.onerror = function() {
-                                    status.style.color = '#c33';
-                                    status.textContent = 'Ошибка сети';
-                                    btn.disabled = false;
-                                    btn.textContent = 'Загрузить';
+                                    text.textContent = 'Ошибка сети';
+                                    text.style.color = '#c33';
+                                    zone.style.pointerEvents = '';
                                 };
 
-                                xhr.send(formData);
+                                xhr.send(fd);
                             }
+                        })();
                         </script>
                     <% } %>
                 </div>
