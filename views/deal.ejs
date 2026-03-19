@@ -133,9 +133,20 @@
                 <!-- Голоса -->
                 <div class="card">
                     <h3>Голосование</h3>
-                    <% if (votes.length === 0) { %>
+
+                    <%
+                        const myVote = votes.find(v => v.user_id === user.id);
+                        const canVote = deal.status === 'active'
+                            && !myVote
+                            && (myRole === 'approver' || myRole === 'invited_approver');
+                        const errorParam = typeof require !== 'undefined' ? '' : '';
+                    %>
+
+                    <% if (votes.length === 0 && !canVote) { %>
                         <div class="empty">Голосов пока нет</div>
-                    <% } else { %>
+                    <% } %>
+
+                    <% if (votes.length > 0) { %>
                         <table>
                             <thead>
                                 <tr><th>Участник</th><th>Решение</th><th>Комментарий</th><th>Оговорка</th><th>Дата</th></tr>
@@ -146,14 +157,115 @@
                                         <td><%= v.name %></td>
                                         <td><span class="vote-<%= v.decision %>"><%= v.decision === 'approve' ? 'Согласовано' : 'Не согласовано' %></span></td>
                                         <td><%= v.comment || '—' %></td>
-                                        <td><%= v.reservation || '—' %></td>
+                                        <td>
+                                            <%= v.reservation || '—' %>
+                                            <% if (v.user_id === user.id && deal.status === 'active') { %>
+                                                <form method="POST" action="/deals/<%= deal.id %>/reservation" style="margin-top:6px; display:flex; gap:4px;">
+                                                    <input type="text" name="reservation" placeholder="Добавить/изменить оговорку" value="<%= v.reservation || '' %>" style="flex:1; padding:4px 8px; border:1px solid #ddd; border-radius:4px; font-size:12px;">
+                                                    <button class="btn btn-sm btn-outline">Сохранить</button>
+                                                </form>
+                                            <% } %>
+                                        </td>
                                         <td><%= new Date(v.voted_at).toLocaleString('ru-RU') %></td>
                                     </tr>
                                 <% }) %>
                             </tbody>
                         </table>
                     <% } %>
+
+                    <!-- Форма голосования -->
+                    <% if (canVote) { %>
+                        <div style="margin-top:16px; padding-top:16px; border-top:1px solid #eee;">
+                            <h4 style="font-size:14px; margin-bottom:12px; color:#333;">Ваше решение</h4>
+                            <form method="POST" action="/deals/<%= deal.id %>/vote" id="voteForm">
+                                <div style="display:flex; gap:8px; margin-bottom:12px;">
+                                    <label style="display:flex; align-items:center; gap:4px; cursor:pointer;">
+                                        <input type="radio" name="decision" value="approve" required> Согласовать
+                                    </label>
+                                    <label style="display:flex; align-items:center; gap:4px; cursor:pointer;">
+                                        <input type="radio" name="decision" value="reject"> Не согласовать
+                                    </label>
+                                </div>
+                                <div style="margin-bottom:8px;">
+                                    <textarea name="comment" placeholder="Комментарий (обязателен при отказе)" rows="2"
+                                              style="width:100%; padding:8px; border:1px solid #ddd; border-radius:6px; font-size:13px; font-family:inherit; resize:vertical;"></textarea>
+                                </div>
+                                <div style="margin-bottom:12px;">
+                                    <input type="text" name="reservation" placeholder="Оговорка (необязательно)"
+                                           style="width:100%; padding:8px; border:1px solid #ddd; border-radius:6px; font-size:13px;">
+                                </div>
+                                <button type="submit" class="btn btn-primary">Проголосовать</button>
+                            </form>
+                            <script>
+                                document.getElementById('voteForm').addEventListener('submit', function(e) {
+                                    const decision = this.querySelector('input[name="decision"]:checked');
+                                    const comment = this.querySelector('textarea[name="comment"]').value.trim();
+                                    if (decision && decision.value === 'reject' && !comment) {
+                                        e.preventDefault();
+                                        alert('При отказе в согласовании комментарий обязателен');
+                                    }
+                                });
+                            </script>
+                        </div>
+                    <% } %>
+
+                    <% if (myVote) { %>
+                        <div style="margin-top:12px; padding:10px 14px; background:#f7f8fa; border-radius:6px; font-size:13px; color:#555;">
+                            Вы проголосовали: <strong class="vote-<%= myVote.decision %>"><%= myVote.decision === 'approve' ? 'Согласовано' : 'Не согласовано' %></strong>
+                        </div>
+                    <% } %>
                 </div>
+
+                <!-- Действия по сделке -->
+                <% if (deal.status === 'draft' && (myRole === 'initiator' || user.is_admin)) { %>
+                    <div class="card">
+                        <h3>Запуск согласования</h3>
+                        <p style="font-size:13px; color:#666; margin-bottom:12px;">После запуска согласующие получат уведомления и смогут голосовать.</p>
+                        <form method="POST" action="/deals/<%= deal.id %>/start">
+                            <button class="btn btn-primary">Запустить согласование</button>
+                        </form>
+                    </div>
+                <% } %>
+
+                <% if (deal.status === 'active' && (myRole === 'initiator' || user.is_admin)) { %>
+                    <div class="card">
+                        <h3>Отзыв сделки</h3>
+                        <form method="POST" action="/deals/<%= deal.id %>/withdraw">
+                            <textarea name="comment" required placeholder="Причина отзыва (обязательно)" rows="2"
+                                      style="width:100%; padding:8px; border:1px solid #ddd; border-radius:6px; font-size:13px; font-family:inherit; margin-bottom:8px; resize:vertical;"></textarea>
+                            <button class="btn btn-danger">Отозвать сделку</button>
+                        </form>
+                    </div>
+                <% } %>
+
+                <% if (user.is_admin && deal.status === 'active') { %>
+                    <div class="card">
+                        <h3>Итоговое решение</h3>
+                        <p style="font-size:13px; color:#666; margin-bottom:12px;">Проставить итоговый статус и закрыть сделку.</p>
+                        <form method="POST" action="/deals/<%= deal.id %>/close">
+                            <div style="display:flex; gap:8px; margin-bottom:12px;">
+                                <label style="display:flex; align-items:center; gap:4px; cursor:pointer;">
+                                    <input type="radio" name="final_status" value="approved" required>
+                                    <span class="vote-approve">Одобрить</span>
+                                </label>
+                                <label style="display:flex; align-items:center; gap:4px; cursor:pointer;">
+                                    <input type="radio" name="final_status" value="rejected">
+                                    <span class="vote-reject">Отклонить</span>
+                                </label>
+                            </div>
+                            <textarea name="comment" placeholder="Комментарий (необязательно)" rows="2"
+                                      style="width:100%; padding:8px; border:1px solid #ddd; border-radius:6px; font-size:13px; font-family:inherit; margin-bottom:8px; resize:vertical;"></textarea>
+                            <button class="btn btn-primary">Закрыть сделку</button>
+                        </form>
+                    </div>
+                <% } %>
+
+                <% if (deal.close_comment) { %>
+                    <div class="card">
+                        <h3>Комментарий к закрытию</h3>
+                        <p style="font-size:14px; color:#333;"><%= deal.close_comment %></p>
+                    </div>
+                <% } %>
 
                 <!-- Документы -->
                 <div class="card">

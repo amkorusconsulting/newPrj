@@ -283,4 +283,200 @@ router.post('/deals/:id/participants/:pid/remove', authRequired, adminRequired, 
     }
 });
 
+// Голосование
+router.post('/deals/:id/vote', authRequired, async (req, res) => {
+    const { id } = req.params;
+    const { decision, comment, reservation } = req.body;
+
+    try {
+        // Проверяем: сделка active?
+        const dealResult = await pool.query('SELECT status FROM deals WHERE id = $1', [id]);
+        if (dealResult.rows.length === 0) return res.status(404).send('Сделка не найдена');
+        if (dealResult.rows[0].status !== 'active') {
+            return res.redirect(`/deals/${id}`);
+        }
+
+        // Проверяем: пользователь — согласующий?
+        const partResult = await pool.query(
+            "SELECT 1 FROM deal_participants WHERE deal_id = $1 AND user_id = $2 AND role IN ('approver', 'invited_approver')",
+            [id, req.user.id]
+        );
+        if (partResult.rows.length === 0) {
+            return res.status(403).send('Вы не являетесь согласующим по этой сделке');
+        }
+
+        // Проверяем: ещё не голосовал?
+        const existingVote = await pool.query(
+            'SELECT 1 FROM votes WHERE deal_id = $1 AND user_id = $2',
+            [id, req.user.id]
+        );
+        if (existingVote.rows.length > 0) {
+            return res.redirect(`/deals/${id}`);
+        }
+
+        // Reject требует комментарий
+        if (decision === 'reject' && (!comment || !comment.trim())) {
+            return res.redirect(`/deals/${id}?error=reject_needs_comment`);
+        }
+
+        await pool.query(
+            'INSERT INTO votes (deal_id, user_id, decision, comment, reservation) VALUES ($1, $2, $3, $4, $5)',
+            [id, req.user.id, decision, comment || null, reservation || null]
+        );
+
+        await pool.query(
+            'INSERT INTO audit_log (user_id, deal_id, action, details) VALUES ($1, $2, $3, $4)',
+            [req.user.id, id, 'voted', JSON.stringify({ decision })]
+        );
+
+        // Проверяем: все ли проголосовали?
+        const totalApprovers = await pool.query(
+            "SELECT COUNT(*) FROM deal_participants WHERE deal_id = $1 AND role IN ('approver', 'invited_approver')",
+            [id]
+        );
+        const totalVotes = await pool.query(
+            'SELECT COUNT(*) FROM votes WHERE deal_id = $1',
+            [id]
+        );
+
+        if (Number(totalVotes.rows[0].count) >= Number(totalApprovers.rows[0].count)) {
+            // Все проголосовали — уведомляем админа (пока просто пишем в аудит)
+            await pool.query(
+                'INSERT INTO audit_log (deal_id, action, details) VALUES ($1, $2, $3)',
+                [id, 'all_voted', JSON.stringify({ total: Number(totalVotes.rows[0].count) })]
+            );
+        }
+
+        res.redirect(`/deals/${id}`);
+    } catch (err) {
+        console.error('Vote error:', err);
+        res.status(500).send('Ошибка сервера');
+    }
+});
+
+// Добавить/изменить оговорку к решению
+router.post('/deals/:id/reservation', authRequired, async (req, res) => {
+    const { id } = req.params;
+    const { reservation } = req.body;
+
+    try {
+        const result = await pool.query(
+            'UPDATE votes SET reservation = $1 WHERE deal_id = $2 AND user_id = $3 RETURNING id',
+            [reservation || null, id, req.user.id]
+        );
+
+        if (result.rows.length > 0) {
+            await pool.query(
+                'INSERT INTO audit_log (user_id, deal_id, action, details) VALUES ($1, $2, $3, $4)',
+                [req.user.id, id, 'reservation_updated', JSON.stringify({ reservation })]
+            );
+        }
+
+        res.redirect(`/deals/${id}`);
+    } catch (err) {
+        console.error('Reservation error:', err);
+        res.status(500).send('Ошибка сервера');
+    }
+});
+
+// Запуск согласования (инициатор)
+router.post('/deals/:id/start', authRequired, async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        const dealResult = await pool.query('SELECT * FROM deals WHERE id = $1', [id]);
+        if (dealResult.rows.length === 0) return res.status(404).send('Сделка не найдена');
+
+        const deal = dealResult.rows[0];
+        if (deal.status !== 'draft') return res.redirect(`/deals/${id}`);
+
+        // Только инициатор или админ
+        if (deal.initiator_id !== req.user.id && !req.user.is_admin) {
+            return res.status(403).send('Только инициатор может запустить согласование');
+        }
+
+        await pool.query("UPDATE deals SET status = 'active' WHERE id = $1", [id]);
+
+        await pool.query(
+            'INSERT INTO audit_log (user_id, deal_id, action) VALUES ($1, $2, $3)',
+            [req.user.id, id, 'deal_started']
+        );
+
+        // TODO: отправка email согласующим
+
+        res.redirect(`/deals/${id}`);
+    } catch (err) {
+        console.error('Start deal error:', err);
+        res.status(500).send('Ошибка сервера');
+    }
+});
+
+// Отзыв сделки (инициатор)
+router.post('/deals/:id/withdraw', authRequired, async (req, res) => {
+    const { id } = req.params;
+    const { comment } = req.body;
+
+    try {
+        const dealResult = await pool.query('SELECT * FROM deals WHERE id = $1', [id]);
+        if (dealResult.rows.length === 0) return res.status(404).send('Сделка не найдена');
+
+        const deal = dealResult.rows[0];
+        if (['closed', 'approved', 'rejected', 'withdrawn'].includes(deal.status)) {
+            return res.redirect(`/deals/${id}`);
+        }
+
+        if (deal.initiator_id !== req.user.id && !req.user.is_admin) {
+            return res.status(403).send('Доступ запрещён');
+        }
+
+        if (!comment || !comment.trim()) {
+            return res.redirect(`/deals/${id}?error=withdraw_needs_comment`);
+        }
+
+        await pool.query(
+            "UPDATE deals SET status = 'withdrawn', close_comment = $1, closed_at = NOW() WHERE id = $2",
+            [comment, id]
+        );
+
+        await pool.query(
+            'INSERT INTO audit_log (user_id, deal_id, action, details) VALUES ($1, $2, $3, $4)',
+            [req.user.id, id, 'deal_withdrawn', JSON.stringify({ comment })]
+        );
+
+        res.redirect(`/deals/${id}`);
+    } catch (err) {
+        console.error('Withdraw error:', err);
+        res.status(500).send('Ошибка сервера');
+    }
+});
+
+// Итоговый статус (администратор)
+router.post('/deals/:id/close', authRequired, adminRequired, async (req, res) => {
+    const { id } = req.params;
+    const { final_status, comment } = req.body;
+
+    try {
+        if (!['approved', 'rejected'].includes(final_status)) {
+            return res.status(400).send('Некорректный статус');
+        }
+
+        await pool.query(
+            'UPDATE deals SET status = $1, close_comment = $2, closed_at = NOW() WHERE id = $3',
+            [final_status, comment || null, id]
+        );
+
+        await pool.query(
+            'INSERT INTO audit_log (user_id, deal_id, action, details) VALUES ($1, $2, $3, $4)',
+            [req.user.id, id, 'deal_closed', JSON.stringify({ final_status, comment })]
+        );
+
+        // TODO: email-рассылка итогового статуса
+
+        res.redirect(`/deals/${id}`);
+    } catch (err) {
+        console.error('Close deal error:', err);
+        res.status(500).send('Ошибка сервера');
+    }
+});
+
 module.exports = router;

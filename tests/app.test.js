@@ -352,6 +352,211 @@ describe('Управление сделками', () => {
     });
 });
 
+// ===== Голосование и жизненный цикл сделки =====
+
+describe('Голосование и жизненный цикл сделки', () => {
+    let adminCookie, approverCookie;
+    let dealId, approverId;
+
+    beforeAll(async () => {
+        // Логин админа
+        const loginRes = await request(app)
+            .post('/login')
+            .type('form')
+            .send({ email: testEmail, password: testPassword });
+        adminCookie = loginRes.headers['set-cookie'];
+
+        // Создаём согласующего
+        const bcrypt = require('bcrypt');
+        const hash = await bcrypt.hash('pass123', 10);
+        const approverRes = await pool.query(
+            'INSERT INTO users (email, name, password_hash) VALUES ($1, $2, $3) RETURNING id',
+            ['test-approver@test.com', 'Согласующий', hash]
+        );
+        approverId = approverRes.rows[0].id;
+
+        // Создаём сделку
+        const dealRes = await pool.query(
+            `INSERT INTO deals (client, department, subject, amount, initiator_id, created_by)
+             VALUES ($1, $2, $3, $4, $5, $5) RETURNING id`,
+            ['Тест-Голосование', 'Отдел', 'Тест голосования', 500000, testUserId]
+        );
+        dealId = dealRes.rows[0].id;
+
+        // Добавляем участников
+        await pool.query(
+            'INSERT INTO deal_participants (deal_id, user_id, role) VALUES ($1, $2, $3)',
+            [dealId, testUserId, 'initiator']
+        );
+        await pool.query(
+            'INSERT INTO deal_participants (deal_id, user_id, role) VALUES ($1, $2, $3)',
+            [dealId, approverId, 'approver']
+        );
+
+        // Логин согласующего
+        const approverLogin = await request(app)
+            .post('/login')
+            .type('form')
+            .send({ email: 'test-approver@test.com', password: 'pass123' });
+        approverCookie = approverLogin.headers['set-cookie'];
+    });
+
+    test('POST /deals/:id/start — запуск согласования', async () => {
+        const res = await request(app)
+            .post(`/deals/${dealId}/start`)
+            .set('Cookie', adminCookie);
+
+        expect(res.status).toBe(302);
+
+        const check = await pool.query('SELECT status FROM deals WHERE id = $1', [dealId]);
+        expect(check.rows[0].status).toBe('active');
+    });
+
+    test('POST /deals/:id/vote — голосование без авторизации редиректит', async () => {
+        const res = await request(app)
+            .post(`/deals/${dealId}/vote`)
+            .type('form')
+            .send({ decision: 'approve' });
+
+        expect(res.status).toBe(302);
+        expect(res.headers.location).toBe('/');
+    });
+
+    test('POST /deals/:id/vote — согласующий голосует approve', async () => {
+        const res = await request(app)
+            .post(`/deals/${dealId}/vote`)
+            .set('Cookie', approverCookie)
+            .type('form')
+            .send({ decision: 'approve', comment: 'Всё хорошо' });
+
+        expect(res.status).toBe(302);
+
+        const check = await pool.query(
+            'SELECT * FROM votes WHERE deal_id = $1 AND user_id = $2',
+            [dealId, approverId]
+        );
+        expect(check.rows.length).toBe(1);
+        expect(check.rows[0].decision).toBe('approve');
+    });
+
+    test('POST /deals/:id/vote — повторное голосование игнорируется', async () => {
+        const res = await request(app)
+            .post(`/deals/${dealId}/vote`)
+            .set('Cookie', approverCookie)
+            .type('form')
+            .send({ decision: 'reject', comment: 'Передумал' });
+
+        expect(res.status).toBe(302);
+
+        // Голос не изменился
+        const check = await pool.query(
+            'SELECT decision FROM votes WHERE deal_id = $1 AND user_id = $2',
+            [dealId, approverId]
+        );
+        expect(check.rows[0].decision).toBe('approve');
+    });
+
+    test('POST /deals/:id/reservation — добавление оговорки', async () => {
+        const res = await request(app)
+            .post(`/deals/${dealId}/reservation`)
+            .set('Cookie', approverCookie)
+            .type('form')
+            .send({ reservation: 'При условии доработки договора' });
+
+        expect(res.status).toBe(302);
+
+        const check = await pool.query(
+            'SELECT reservation FROM votes WHERE deal_id = $1 AND user_id = $2',
+            [dealId, approverId]
+        );
+        expect(check.rows[0].reservation).toBe('При условии доработки договора');
+    });
+
+    test('POST /deals/:id/close — администратор закрывает сделку', async () => {
+        const res = await request(app)
+            .post(`/deals/${dealId}/close`)
+            .set('Cookie', adminCookie)
+            .type('form')
+            .send({ final_status: 'approved', comment: 'Сделка одобрена' });
+
+        expect(res.status).toBe(302);
+
+        const check = await pool.query('SELECT status, close_comment, closed_at FROM deals WHERE id = $1', [dealId]);
+        expect(check.rows[0].status).toBe('approved');
+        expect(check.rows[0].close_comment).toBe('Сделка одобрена');
+        expect(check.rows[0].closed_at).not.toBeNull();
+    });
+
+    test('Голосование по закрытой сделке невозможно', async () => {
+        // Создадим второго согласующего
+        const bcrypt = require('bcrypt');
+        const hash = await bcrypt.hash('pass123', 10);
+        const user2 = await pool.query(
+            'INSERT INTO users (email, name, password_hash) VALUES ($1, $2, $3) RETURNING id',
+            ['test-approver2@test.com', 'Согласующий2', hash]
+        );
+        await pool.query(
+            'INSERT INTO deal_participants (deal_id, user_id, role) VALUES ($1, $2, $3)',
+            [dealId, user2.rows[0].id, 'approver']
+        );
+
+        const login2 = await request(app)
+            .post('/login')
+            .type('form')
+            .send({ email: 'test-approver2@test.com', password: 'pass123' });
+
+        const res = await request(app)
+            .post(`/deals/${dealId}/vote`)
+            .set('Cookie', login2.headers['set-cookie'])
+            .type('form')
+            .send({ decision: 'approve' });
+
+        // Редирект без создания голоса (сделка не active)
+        expect(res.status).toBe(302);
+
+        const check = await pool.query(
+            'SELECT COUNT(*) FROM votes WHERE deal_id = $1',
+            [dealId]
+        );
+        expect(Number(check.rows[0].count)).toBe(1); // только первый голос
+    });
+});
+
+// ===== Отзыв сделки =====
+
+describe('Отзыв сделки', () => {
+    let adminCookie, dealId;
+
+    beforeAll(async () => {
+        const loginRes = await request(app)
+            .post('/login')
+            .type('form')
+            .send({ email: testEmail, password: testPassword });
+        adminCookie = loginRes.headers['set-cookie'];
+
+        const dealRes = await pool.query(
+            `INSERT INTO deals (client, department, subject, status, initiator_id, created_by)
+             VALUES ($1, $2, $3, 'active', $4, $4) RETURNING id`,
+            ['Тест-Отзыв', 'Отдел', 'Сделка для отзыва', testUserId]
+        );
+        dealId = dealRes.rows[0].id;
+    });
+
+    test('POST /deals/:id/withdraw — отзыв с комментарием', async () => {
+        const res = await request(app)
+            .post(`/deals/${dealId}/withdraw`)
+            .set('Cookie', adminCookie)
+            .type('form')
+            .send({ comment: 'Клиент отказался' });
+
+        expect(res.status).toBe(302);
+
+        const check = await pool.query('SELECT status, close_comment FROM deals WHERE id = $1', [dealId]);
+        expect(check.rows[0].status).toBe('withdrawn');
+        expect(check.rows[0].close_comment).toBe('Клиент отказался');
+    });
+});
+
 // ===== Безопасность =====
 
 describe('Заголовки безопасности (Helmet)', () => {
