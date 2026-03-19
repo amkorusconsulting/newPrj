@@ -20,6 +20,8 @@ app.use(helmet({
         directives: {
             ...helmet.contentSecurityPolicy.getDefaultDirectives(),
             'upgrade-insecure-requests': null,
+            'script-src': ["'self'", "'unsafe-inline'"],
+            'script-src-attr': null,
         },
     },
 }));
