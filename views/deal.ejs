@@ -135,7 +135,7 @@
                     <h3>Голосование</h3>
 
                     <%
-                        const myVote = votes.find(v => v.user_id === user.id);
+                        const myVote = votes.find(v => String(v.user_id) === String(user.id));
                         const canVote = deal.status === 'active'
                             && !myVote
                             && (myRole === 'approver' || myRole === 'invited_approver');
@@ -159,7 +159,7 @@
                                         <td><%= v.comment || '—' %></td>
                                         <td>
                                             <%= v.reservation || '—' %>
-                                            <% if (v.user_id === user.id && deal.status === 'active') { %>
+                                            <% if (String(v.user_id) === String(user.id) && deal.status === 'active') { %>
                                                 <form method="POST" action="/deals/<%= deal.id %>/reservation" style="margin-top:6px; display:flex; gap:4px;">
                                                     <input type="text" name="reservation" placeholder="Добавить/изменить оговорку" value="<%= v.reservation || '' %>" style="flex:1; padding:4px 8px; border:1px solid #ddd; border-radius:4px; font-size:12px;">
                                                     <button class="btn btn-sm btn-outline">Сохранить</button>
@@ -272,7 +272,7 @@
                     <h3>Документы (<%= documents.length %>)</h3>
 
                     <% const canUpload = !['closed','approved','rejected','withdrawn'].includes(deal.status)
-                        && (deal.initiator_id === user.id || user.is_admin); %>
+                        && (String(deal.initiator_id) === String(user.id) || user.is_admin); %>
 
                     <% if (documents.length === 0 && !canUpload) { %>
                         <div class="empty">Документы не загружены</div>

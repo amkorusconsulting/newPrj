@@ -409,7 +409,7 @@ router.post('/deals/:id/start', authRequired, async (req, res) => {
         if (deal.status !== 'draft') return res.redirect(`/deals/${id}`);
 
         // Только инициатор или админ
-        if (deal.initiator_id !== req.user.id && !req.user.is_admin) {
+        if (String(deal.initiator_id) !== String(req.user.id) && !req.user.is_admin) {
             return res.status(403).send('Только инициатор может запустить согласование');
         }
 
@@ -443,7 +443,7 @@ router.post('/deals/:id/withdraw', authRequired, async (req, res) => {
             return res.redirect(`/deals/${id}`);
         }
 
-        if (deal.initiator_id !== req.user.id && !req.user.is_admin) {
+        if (String(deal.initiator_id) !== String(req.user.id) && !req.user.is_admin) {
             return res.status(403).send('Доступ запрещён');
         }
 
