@@ -269,24 +269,51 @@
 
                 <!-- Документы -->
                 <div class="card">
-                    <h3>Документы</h3>
-                    <% if (documents.length === 0) { %>
+                    <h3>Документы (<%= documents.length %>)</h3>
+
+                    <% const canUpload = !['closed','approved','rejected','withdrawn'].includes(deal.status)
+                        && (deal.initiator_id === user.id || user.is_admin); %>
+
+                    <% if (documents.length === 0 && !canUpload) { %>
                         <div class="empty">Документы не загружены</div>
-                    <% } else { %>
+                    <% } %>
+
+                    <% if (documents.length > 0) { %>
                         <table>
                             <thead>
-                                <tr><th>Файл</th><th>Размер</th><th>Загружен</th></tr>
+                                <tr><th>Файл</th><th>Размер</th><th>Загружен</th><% if (canUpload) { %><th></th><% } %></tr>
                             </thead>
                             <tbody>
                                 <% documents.forEach(doc => { %>
                                     <tr>
                                         <td><a href="/deals/<%= deal.id %>/documents/<%= doc.id %>/download"><%= doc.filename %></a></td>
-                                        <td><%= doc.filesize ? (doc.filesize / 1024).toFixed(0) + ' КБ' : '—' %></td>
+                                        <td><%= doc.filesize ? (doc.filesize < 1024*1024 ? (doc.filesize / 1024).toFixed(0) + ' КБ' : (doc.filesize / 1024 / 1024).toFixed(1) + ' МБ') : '—' %></td>
                                         <td><%= new Date(doc.uploaded_at).toLocaleString('ru-RU') %></td>
+                                        <% if (canUpload) { %>
+                                            <td>
+                                                <form method="POST" action="/deals/<%= deal.id %>/documents/<%= doc.id %>/delete" style="display:inline"
+                                                      onsubmit="return confirm('Удалить документ?')">
+                                                    <button class="btn btn-sm btn-danger">×</button>
+                                                </form>
+                                            </td>
+                                        <% } %>
                                     </tr>
                                 <% }) %>
                             </tbody>
                         </table>
+                    <% } %>
+
+                    <% if (canUpload) { %>
+                        <div style="margin-top:16px; padding-top:16px; border-top:1px solid #eee;">
+                            <form method="POST" action="/deals/<%= deal.id %>/documents" enctype="multipart/form-data">
+                                <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                                    <input type="file" name="files" multiple required
+                                           style="font-size:13px;">
+                                    <button class="btn btn-sm btn-primary">Загрузить</button>
+                                </div>
+                                <p style="font-size:11px; color:#999; margin-top:6px;">Можно выбрать несколько файлов. Макс. 50 МБ на файл.</p>
+                            </form>
+                        </div>
                     <% } %>
                 </div>
             </div>

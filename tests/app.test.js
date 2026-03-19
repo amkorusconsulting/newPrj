@@ -1,5 +1,7 @@
 const request = require('supertest');
 const bcrypt = require('bcrypt');
+const path = require('path');
+const fs = require('fs');
 const app = require('../app');
 const pool = require('../db');
 
@@ -554,6 +556,93 @@ describe('Отзыв сделки', () => {
         const check = await pool.query('SELECT status, close_comment FROM deals WHERE id = $1', [dealId]);
         expect(check.rows[0].status).toBe('withdrawn');
         expect(check.rows[0].close_comment).toBe('Клиент отказался');
+    });
+});
+
+// ===== Документы =====
+
+describe('Документы сделки', () => {
+    let adminCookie, dealId;
+
+    beforeAll(async () => {
+        const loginRes = await request(app)
+            .post('/login')
+            .type('form')
+            .send({ email: testEmail, password: testPassword });
+        adminCookie = loginRes.headers['set-cookie'];
+
+        const dealRes = await pool.query(
+            `INSERT INTO deals (client, department, subject, initiator_id, created_by)
+             VALUES ($1, $2, $3, $4, $4) RETURNING id`,
+            ['Тест-Документы', 'Отдел', 'Сделка с документами', testUserId]
+        );
+        dealId = dealRes.rows[0].id;
+        await pool.query(
+            'INSERT INTO deal_participants (deal_id, user_id, role) VALUES ($1, $2, $3)',
+            [dealId, testUserId, 'initiator']
+        );
+    });
+
+    test('POST /deals/:id/documents — загрузка файла', async () => {
+        // Создаём временный тестовый файл
+        const tmpFile = path.join(__dirname, 'test-upload.txt');
+        fs.writeFileSync(tmpFile, 'Тестовое содержимое документа');
+
+        const res = await request(app)
+            .post(`/deals/${dealId}/documents`)
+            .set('Cookie', adminCookie)
+            .attach('files', tmpFile);
+
+        expect(res.status).toBe(302);
+
+        const docs = await pool.query('SELECT * FROM documents WHERE deal_id = $1', [dealId]);
+        expect(docs.rows.length).toBe(1);
+        expect(docs.rows[0].filename).toBe('test-upload.txt');
+
+        fs.unlinkSync(tmpFile);
+    });
+
+    test('GET /deals/:id/documents/:docId/download — скачивание', async () => {
+        const doc = await pool.query('SELECT id FROM documents WHERE deal_id = $1', [dealId]);
+        const docId = doc.rows[0].id;
+
+        const res = await request(app)
+            .get(`/deals/${dealId}/documents/${docId}/download`)
+            .set('Cookie', adminCookie);
+
+        expect(res.status).toBe(200);
+        expect(res.headers['content-disposition']).toContain('test-upload.txt');
+    });
+
+    test('GET /deals/:id/documents/:docId/download — без авторизации', async () => {
+        const doc = await pool.query('SELECT id FROM documents WHERE deal_id = $1', [dealId]);
+        const res = await request(app).get(`/deals/${dealId}/documents/${doc.rows[0].id}/download`);
+
+        expect(res.status).toBe(302);
+        expect(res.headers.location).toBe('/');
+    });
+
+    test('POST /deals/:id/documents/:docId/delete — удаление файла', async () => {
+        const doc = await pool.query('SELECT * FROM documents WHERE deal_id = $1', [dealId]);
+        const docId = doc.rows[0].id;
+
+        const res = await request(app)
+            .post(`/deals/${dealId}/documents/${docId}/delete`)
+            .set('Cookie', adminCookie);
+
+        expect(res.status).toBe(302);
+
+        const check = await pool.query('SELECT * FROM documents WHERE id = $1', [docId]);
+        expect(check.rows.length).toBe(0);
+    });
+
+    test('Загрузка логируется в аудит', async () => {
+        const logs = await pool.query(
+            "SELECT action FROM audit_log WHERE deal_id = $1 AND action LIKE 'document_%' ORDER BY created_at",
+            [dealId]
+        );
+        const actions = logs.rows.map(r => r.action);
+        expect(actions).toContain('document_uploaded');
     });
 });
 
