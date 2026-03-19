@@ -124,6 +124,23 @@ router.get('/deals/:id', authRequired, async (req, res) => {
             [id]
         );
 
+        // Комментарии к документам
+        const commentsResult = await pool.query(
+            `SELECT c.*, u.name AS author_name
+             FROM comments c
+             JOIN users u ON c.user_id = u.id
+             WHERE c.deal_id = $1
+             ORDER BY c.created_at ASC`,
+            [id]
+        );
+
+        // Группируем комментарии по document_id
+        const commentsByDoc = {};
+        commentsResult.rows.forEach(c => {
+            if (!commentsByDoc[c.document_id]) commentsByDoc[c.document_id] = [];
+            commentsByDoc[c.document_id].push(c);
+        });
+
         // Голоса
         const votesResult = await pool.query(
             `SELECT v.*, u.name, u.email
@@ -154,6 +171,7 @@ router.get('/deals/:id', authRequired, async (req, res) => {
             votes: votesResult.rows,
             myRole,
             allUsers: allUsersResult.rows,
+            commentsByDoc,
         });
     } catch (err) {
         console.error('Deal view error:', err);

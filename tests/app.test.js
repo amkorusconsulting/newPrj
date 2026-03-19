@@ -646,6 +646,83 @@ describe('Документы сделки', () => {
     });
 });
 
+// ===== Комментарии =====
+
+describe('Комментарии к документам', () => {
+    let adminCookie, dealId, docId;
+
+    beforeAll(async () => {
+        const loginRes = await request(app)
+            .post('/login')
+            .type('form')
+            .send({ email: testEmail, password: testPassword });
+        adminCookie = loginRes.headers['set-cookie'];
+
+        // Создаём сделку с документом
+        const dealRes = await pool.query(
+            `INSERT INTO deals (client, department, subject, status, initiator_id, created_by)
+             VALUES ($1, $2, $3, 'active', $4, $4) RETURNING id`,
+            ['Тест-Комментарии', 'Отдел', 'Сделка для комментариев', testUserId]
+        );
+        dealId = dealRes.rows[0].id;
+        await pool.query(
+            'INSERT INTO deal_participants (deal_id, user_id, role) VALUES ($1, $2, $3)',
+            [dealId, testUserId, 'initiator']
+        );
+
+        const docRes = await pool.query(
+            'INSERT INTO documents (deal_id, filename, filepath, filesize, uploaded_by) VALUES ($1, $2, $3, $4, $5) RETURNING id',
+            [dealId, 'test-doc.pdf', '/tmp/test-doc.pdf', 1024, testUserId]
+        );
+        docId = docRes.rows[0].id;
+    });
+
+    test('POST /deals/:id/documents/:docId/comments — добавляет комментарий', async () => {
+        const res = await request(app)
+            .post(`/deals/${dealId}/documents/${docId}/comments`)
+            .set('Cookie', adminCookie)
+            .type('form')
+            .send({ text: 'Тестовый комментарий' });
+
+        expect(res.status).toBe(302);
+
+        const check = await pool.query(
+            'SELECT * FROM comments WHERE deal_id = $1 AND document_id = $2',
+            [dealId, docId]
+        );
+        expect(check.rows.length).toBe(1);
+        expect(check.rows[0].text).toBe('Тестовый комментарий');
+    });
+
+    test('POST /deals/:id/documents/:docId/comments — пустой комментарий игнорируется', async () => {
+        const res = await request(app)
+            .post(`/deals/${dealId}/documents/${docId}/comments`)
+            .set('Cookie', adminCookie)
+            .type('form')
+            .send({ text: '   ' });
+
+        expect(res.status).toBe(302);
+
+        const check = await pool.query('SELECT COUNT(*) FROM comments WHERE deal_id = $1', [dealId]);
+        expect(Number(check.rows[0].count)).toBe(1); // только предыдущий
+    });
+
+    test('GET /deals/:id/comments — сводная страница комментариев', async () => {
+        const res = await request(app)
+            .get(`/deals/${dealId}/comments`)
+            .set('Cookie', adminCookie);
+
+        expect(res.status).toBe(200);
+        expect(res.text).toContain('Тестовый комментарий');
+        expect(res.text).toContain('test-doc.pdf');
+    });
+
+    test('GET /deals/:id/comments — без авторизации редиректит', async () => {
+        const res = await request(app).get(`/deals/${dealId}/comments`);
+        expect(res.status).toBe(302);
+    });
+});
+
 // ===== Безопасность =====
 
 describe('Заголовки безопасности (Helmet)', () => {

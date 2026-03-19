@@ -9,6 +9,7 @@ const dashboardRoutes = require('./routes/dashboard');
 const usersRoutes = require('./routes/users');
 const dealsRoutes = require('./routes/deals');
 const documentsRoutes = require('./routes/documents');
+const commentsRoutes = require('./routes/comments');
 
 const app = express();
 
@@ -44,5 +45,6 @@ app.use(dashboardRoutes);
 app.use(usersRoutes);
 app.use(dealsRoutes);
 app.use(documentsRoutes);
+app.use(commentsRoutes);
 
 module.exports = app;
