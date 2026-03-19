@@ -15,8 +15,10 @@ const storage = multer.diskStorage({
         cb(null, dir);
     },
     filename: (req, file, cb) => {
-        // Уникальное имя: timestamp + оригинальное имя
-        const uniqueName = Date.now() + '-' + file.originalname;
+        // Декодируем кириллицу из latin1 в utf-8
+        const originalName = Buffer.from(file.originalname, 'latin1').toString('utf8');
+        file.originalname = originalName;
+        const uniqueName = Date.now() + '-' + originalName;
         cb(null, uniqueName);
     },
 });
