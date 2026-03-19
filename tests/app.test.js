@@ -19,8 +19,18 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-    // Удаляем тестовые данные
-    await pool.query('DELETE FROM permanent_approvers WHERE user_id = $1', [testUserId]);
+    // Удаляем тестовые данные (порядок важен из-за FK)
+    const testDeals = await pool.query("SELECT id FROM deals WHERE client LIKE 'Тест-%'");
+    const dealIds = testDeals.rows.map(r => r.id);
+    if (dealIds.length > 0) {
+        await pool.query('DELETE FROM audit_log WHERE deal_id = ANY($1)', [dealIds]);
+        await pool.query('DELETE FROM votes WHERE deal_id = ANY($1)', [dealIds]);
+        await pool.query('DELETE FROM comments WHERE deal_id = ANY($1)', [dealIds]);
+        await pool.query('DELETE FROM documents WHERE deal_id = ANY($1)', [dealIds]);
+        await pool.query('DELETE FROM deal_participants WHERE deal_id = ANY($1)', [dealIds]);
+        await pool.query('DELETE FROM deals WHERE id = ANY($1)', [dealIds]);
+    }
+    await pool.query('DELETE FROM permanent_approvers WHERE user_id IN (SELECT id FROM users WHERE email LIKE $1)', ['test-%@test.com']);
     await pool.query('DELETE FROM users WHERE email LIKE $1', ['test-%@test.com']);
     await pool.end();
 });
@@ -207,6 +217,138 @@ describe('Управление пользователями', () => {
 
         const check = await pool.query('SELECT is_active FROM users WHERE id = $1', [toggleId]);
         expect(check.rows[0].is_active).toBe(false);
+    });
+});
+
+// ===== Управление сделками =====
+
+describe('Управление сделками', () => {
+    let adminCookie;
+
+    beforeAll(async () => {
+        const loginRes = await request(app)
+            .post('/login')
+            .type('form')
+            .send({ email: testEmail, password: testPassword });
+        adminCookie = loginRes.headers['set-cookie'];
+    });
+
+    test('GET /deals/new — форма создания сделки', async () => {
+        const res = await request(app)
+            .get('/deals/new')
+            .set('Cookie', adminCookie);
+
+        expect(res.status).toBe(200);
+        expect(res.text).toContain('Новая сделка');
+        expect(res.text).toContain('Клиент');
+    });
+
+    test('POST /deals — создаёт сделку', async () => {
+        const res = await request(app)
+            .post('/deals')
+            .set('Cookie', adminCookie)
+            .type('form')
+            .send({
+                client: 'Тест-Клиент',
+                department: 'Тест-Отдел',
+                subject: 'Тестовая сделка',
+                amount: '1000000',
+                initiator_id: testUserId,
+            });
+
+        expect(res.status).toBe(302);
+        expect(res.headers.location).toMatch(/\/deals\/\d+/);
+
+        // Проверяем в БД
+        const check = await pool.query('SELECT * FROM deals WHERE client = $1', ['Тест-Клиент']);
+        expect(check.rows.length).toBe(1);
+        expect(check.rows[0].status).toBe('draft');
+    });
+
+    test('GET /deals/:id — карточка сделки', async () => {
+        const deal = await pool.query('SELECT id FROM deals WHERE client = $1', ['Тест-Клиент']);
+        const dealId = deal.rows[0].id;
+
+        const res = await request(app)
+            .get(`/deals/${dealId}`)
+            .set('Cookie', adminCookie);
+
+        expect(res.status).toBe(200);
+        expect(res.text).toContain('Тест-Клиент');
+        expect(res.text).toContain('Тестовая сделка');
+    });
+
+    test('GET /deals/:id — без авторизации редиректит', async () => {
+        const deal = await pool.query('SELECT id FROM deals WHERE client = $1', ['Тест-Клиент']);
+        const res = await request(app).get(`/deals/${deal.rows[0].id}`);
+
+        expect(res.status).toBe(302);
+        expect(res.headers.location).toBe('/');
+    });
+
+    test('POST /deals/:id/edit — редактирование сделки', async () => {
+        const deal = await pool.query('SELECT id FROM deals WHERE client = $1', ['Тест-Клиент']);
+        const dealId = deal.rows[0].id;
+
+        const res = await request(app)
+            .post(`/deals/${dealId}/edit`)
+            .set('Cookie', adminCookie)
+            .type('form')
+            .send({
+                client: 'Тест-Клиент-Обновлён',
+                department: 'Тест-Отдел',
+                subject: 'Обновлённая сделка',
+                amount: '2000000',
+                initiator_id: testUserId,
+            });
+
+        expect(res.status).toBe(302);
+
+        const check = await pool.query('SELECT * FROM deals WHERE id = $1', [dealId]);
+        expect(check.rows[0].client).toBe('Тест-Клиент-Обновлён');
+        expect(check.rows[0].subject).toBe('Обновлённая сделка');
+    });
+
+    test('POST /deals/:id/participants — добавляет участника', async () => {
+        // Создадим пользователя-участника
+        const bcrypt = require('bcrypt');
+        const hash = await bcrypt.hash('pass123', 10);
+        const newUser = await pool.query(
+            'INSERT INTO users (email, name, password_hash) VALUES ($1, $2, $3) RETURNING id',
+            ['test-participant@test.com', 'Участник', hash]
+        );
+        const participantId = newUser.rows[0].id;
+
+        const deal = await pool.query('SELECT id FROM deals WHERE client = $1', ['Тест-Клиент-Обновлён']);
+        const dealId = deal.rows[0].id;
+
+        const res = await request(app)
+            .post(`/deals/${dealId}/participants`)
+            .set('Cookie', adminCookie)
+            .type('form')
+            .send({ user_id: participantId, role: 'observer' });
+
+        expect(res.status).toBe(302);
+
+        const check = await pool.query(
+            'SELECT * FROM deal_participants WHERE deal_id = $1 AND user_id = $2',
+            [dealId, participantId]
+        );
+        expect(check.rows.length).toBe(1);
+        expect(check.rows[0].role).toBe('observer');
+    });
+
+    test('Аудит-лог записывается при создании и редактировании', async () => {
+        const deal = await pool.query('SELECT id FROM deals WHERE client = $1', ['Тест-Клиент-Обновлён']);
+        const dealId = deal.rows[0].id;
+
+        const logs = await pool.query(
+            'SELECT action FROM audit_log WHERE deal_id = $1 ORDER BY created_at',
+            [dealId]
+        );
+        const actions = logs.rows.map(r => r.action);
+        expect(actions).toContain('deal_created');
+        expect(actions).toContain('deal_updated');
     });
 });
 

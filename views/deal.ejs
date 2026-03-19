@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Корус СПР — Сделка #<%= deal.id %></title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f0f2f5; min-height: 100vh; }
+        .header { background: #1e3a5f; color: #fff; padding: 16px 32px; display: flex; justify-content: space-between; align-items: center; }
+        .header h1 { font-size: 18px; font-weight: 600; }
+        .header-right { display: flex; align-items: center; gap: 16px; font-size: 14px; }
+        .header-right a { color: #aac4e0; text-decoration: none; }
+        .header-right a:hover { color: #fff; }
+        nav { background: #fff; border-bottom: 1px solid #e0e0e0; padding: 0 32px; }
+        nav a { display: inline-block; padding: 12px 16px; text-decoration: none; color: #666; font-size: 14px; font-weight: 500; border-bottom: 2px solid transparent; }
+        nav a:hover { color: #1e3a5f; }
+        nav a.active { color: #1e3a5f; border-bottom-color: #1e3a5f; }
+        .container { max-width: 1100px; margin: 32px auto; padding: 0 24px; }
+        .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+        .page-header h2 { font-size: 20px; color: #333; }
+        .page-header-actions { display: flex; gap: 8px; }
+        .grid { display: grid; grid-template-columns: 1fr 380px; gap: 24px; }
+        .card { background: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); padding: 24px; margin-bottom: 24px; }
+        .card h3 { font-size: 15px; color: #333; margin-bottom: 16px; font-weight: 600; }
+        .field { margin-bottom: 14px; }
+        .field-label { font-size: 12px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 3px; }
+        .field-value { font-size: 14px; color: #333; }
+        .status { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+        .status-draft { background: #eee; color: #666; }
+        .status-active { background: #e3f2fd; color: #1565c0; }
+        .status-approved { background: #e8f5e9; color: #2e7d32; }
+        .status-rejected { background: #fce4ec; color: #c62828; }
+        .status-withdrawn { background: #fff3e0; color: #e65100; }
+        .status-closed { background: #f3e5f5; color: #6a1b9a; }
+        .btn { padding: 8px 18px; border: none; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; text-decoration: none; display: inline-block; }
+        .btn-primary { background: #1e3a5f; color: #fff; }
+        .btn-primary:hover { background: #2d5a87; }
+        .btn-sm { padding: 4px 12px; font-size: 12px; }
+        .btn-danger { background: #c62828; color: #fff; }
+        .btn-danger:hover { background: #d32f2f; }
+        .btn-outline { background: #fff; color: #666; border: 1px solid #ddd; }
+        .btn-outline:hover { background: #f5f5f5; }
+        table { width: 100%; border-collapse: collapse; }
+        th { text-align: left; padding: 8px 12px; font-size: 12px; color: #888; font-weight: 600; border-bottom: 1px solid #eee; }
+        td { padding: 8px 12px; font-size: 13px; color: #333; border-bottom: 1px solid #f0f0f0; }
+        tr:hover { background: #f9fbfd; }
+        .tag { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+        .tag-initiator { background: #e3f2fd; color: #1565c0; }
+        .tag-approver { background: #e8f5e9; color: #2e7d32; }
+        .tag-invited_approver { background: #fff3e0; color: #e65100; }
+        .tag-observer { background: #f3e5f5; color: #6a1b9a; }
+        .vote-approve { color: #2e7d32; font-weight: 600; }
+        .vote-reject { color: #c62828; font-weight: 600; }
+        .empty { text-align: center; padding: 24px; color: #999; font-size: 13px; }
+        .add-form { display: flex; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid #eee; }
+        .add-form select, .add-form input { padding: 6px 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 13px; }
+        .add-form select { flex: 1; }
+
+        .role-labels { display: flex; gap: 6px; flex-wrap: wrap; }
+
+        @media (max-width: 800px) {
+            .grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Корус СПР</h1>
+        <div class="header-right">
+            <span><%= user.name %></span>
+            <a href="/logout">Выйти</a>
+        </div>
+    </div>
+
+    <nav>
+        <a href="/dashboard" class="active">Сделки</a>
+        <% if (user.is_admin) { %>
+            <a href="/users">Пользователи</a>
+        <% } %>
+    </nav>
+
+    <div class="container">
+        <div class="page-header">
+            <h2>Сделка #<%= deal.id %>: <%= deal.client %></h2>
+            <div class="page-header-actions">
+                <% if (user.is_admin && !['closed','approved','rejected','withdrawn'].includes(deal.status)) { %>
+                    <a href="/deals/<%= deal.id %>/edit" class="btn btn-outline">Редактировать</a>
+                <% } %>
+                <a href="/dashboard" class="btn btn-outline">К списку</a>
+            </div>
+        </div>
+
+        <div class="grid">
+            <div class="main-col">
+                <!-- Атрибуты -->
+                <div class="card">
+                    <h3>Карточка сделки</h3>
+                    <div class="field">
+                        <div class="field-label">Статус</div>
+                        <div class="field-value"><span class="status status-<%= deal.status %>"><%= deal.status %></span></div>
+                    </div>
+                    <div class="field">
+                        <div class="field-label">Клиент</div>
+                        <div class="field-value"><%= deal.client %></div>
+                    </div>
+                    <div class="field">
+                        <div class="field-label">Подразделение</div>
+                        <div class="field-value"><%= deal.department %></div>
+                    </div>
+                    <div class="field">
+                        <div class="field-label">Предмет</div>
+                        <div class="field-value"><%= deal.subject %></div>
+                    </div>
+                    <div class="field">
+                        <div class="field-label">Сумма</div>
+                        <div class="field-value"><%= deal.amount ? Number(deal.amount).toLocaleString('ru-RU') + ' руб.' : '—' %></div>
+                    </div>
+                    <div class="field">
+                        <div class="field-label">Крайний срок</div>
+                        <div class="field-value"><%= deal.deadline ? new Date(deal.deadline).toLocaleString('ru-RU') : '—' %></div>
+                    </div>
+                    <div class="field">
+                        <div class="field-label">Инициатор</div>
+                        <div class="field-value"><%= deal.initiator_name || '—' %> (<%= deal.initiator_email || '' %>)</div>
+                    </div>
+                    <div class="field">
+                        <div class="field-label">Создал</div>
+                        <div class="field-value"><%= deal.created_by_name || '—' %> · <%= new Date(deal.created_at).toLocaleString('ru-RU') %></div>
+                    </div>
+                </div>
+
+                <!-- Голоса -->
+                <div class="card">
+                    <h3>Голосование</h3>
+                    <% if (votes.length === 0) { %>
+                        <div class="empty">Голосов пока нет</div>
+                    <% } else { %>
+                        <table>
+                            <thead>
+                                <tr><th>Участник</th><th>Решение</th><th>Комментарий</th><th>Оговорка</th><th>Дата</th></tr>
+                            </thead>
+                            <tbody>
+                                <% votes.forEach(v => { %>
+                                    <tr>
+                                        <td><%= v.name %></td>
+                                        <td><span class="vote-<%= v.decision %>"><%= v.decision === 'approve' ? 'Согласовано' : 'Не согласовано' %></span></td>
+                                        <td><%= v.comment || '—' %></td>
+                                        <td><%= v.reservation || '—' %></td>
+                                        <td><%= new Date(v.voted_at).toLocaleString('ru-RU') %></td>
+                                    </tr>
+                                <% }) %>
+                            </tbody>
+                        </table>
+                    <% } %>
+                </div>
+
+                <!-- Документы -->
+                <div class="card">
+                    <h3>Документы</h3>
+                    <% if (documents.length === 0) { %>
+                        <div class="empty">Документы не загружены</div>
+                    <% } else { %>
+                        <table>
+                            <thead>
+                                <tr><th>Файл</th><th>Размер</th><th>Загружен</th></tr>
+                            </thead>
+                            <tbody>
+                                <% documents.forEach(doc => { %>
+                                    <tr>
+                                        <td><a href="/deals/<%= deal.id %>/documents/<%= doc.id %>/download"><%= doc.filename %></a></td>
+                                        <td><%= doc.filesize ? (doc.filesize / 1024).toFixed(0) + ' КБ' : '—' %></td>
+                                        <td><%= new Date(doc.uploaded_at).toLocaleString('ru-RU') %></td>
+                                    </tr>
+                                <% }) %>
+                            </tbody>
+                        </table>
+                    <% } %>
+                </div>
+            </div>
+
+            <!-- Боковая панель: участники -->
+            <div class="side-col">
+                <div class="card">
+                    <h3>Участники (<%= participants.length %>)</h3>
+                    <table>
+                        <tbody>
+                            <% participants.forEach(p => { %>
+                                <tr>
+                                    <td>
+                                        <%= p.name %>
+                                        <div class="role-labels">
+                                            <span class="tag tag-<%= p.role %>">
+                                                <%= p.role === 'initiator' ? 'Инициатор' :
+                                                   p.role === 'approver' ? 'Согласующий' :
+                                                   p.role === 'invited_approver' ? 'Приглашённый' :
+                                                   'Наблюдатель' %>
+                                            </span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <% if (user.is_admin && p.role !== 'initiator' && !['closed','approved','rejected','withdrawn'].includes(deal.status)) { %>
+                                            <form method="POST" action="/deals/<%= deal.id %>/participants/<%= p.id %>/remove" style="display:inline">
+                                                <button class="btn btn-sm btn-danger">×</button>
+                                            </form>
+                                        <% } %>
+                                    </td>
+                                </tr>
+                            <% }) %>
+                        </tbody>
+                    </table>
+
+                    <% if (user.is_admin && !['closed','approved','rejected','withdrawn'].includes(deal.status)) { %>
+                        <% const existingIds = participants.map(p => p.user_id); %>
+                        <form method="POST" action="/deals/<%= deal.id %>/participants" class="add-form">
+                            <select name="user_id" required>
+                                <option value="">Пользователь...</option>
+                                <% allUsers.forEach(u => { %>
+                                    <% if (!existingIds.includes(u.id)) { %>
+                                        <option value="<%= u.id %>"><%= u.name %></option>
+                                    <% } %>
+                                <% }) %>
+                            </select>
+                            <select name="role" required>
+                                <option value="invited_approver">Согласующий</option>
+                                <option value="observer">Наблюдатель</option>
+                            </select>
+                            <button class="btn btn-sm btn-primary">+</button>
+                        </form>
+                    <% } %>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

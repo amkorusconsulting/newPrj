@@ -7,6 +7,7 @@ const path = require('path');
 const authRoutes = require('./routes/auth');
 const dashboardRoutes = require('./routes/dashboard');
 const usersRoutes = require('./routes/users');
+const dealsRoutes = require('./routes/deals');
 
 const app = express();
 
@@ -33,5 +34,6 @@ app.get('/', (req, res) => {
 app.use(authRoutes);
 app.use(dashboardRoutes);
 app.use(usersRoutes);
+app.use(dealsRoutes);
 
 module.exports = app;
