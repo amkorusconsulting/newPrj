@@ -11,3 +11,9 @@ uploads/
 .claude/
 .claude.json
 snap/
+.npm/
+.ansible/
+server.log
+nohup.out
+test-file.txt
+.config/
