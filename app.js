@@ -34,6 +34,11 @@ app.get('/', (req, res) => {
     res.render('login', { error: null });
 });
 
+app.get('/robots.txt', (req, res) => {
+    res.type('text/plain');
+    res.send('User-agent: *\nDisallow: /');
+});
+
 app.use(authRoutes);
 app.use(dashboardRoutes);
 app.use(usersRoutes);
