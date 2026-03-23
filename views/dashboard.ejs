@@ -141,6 +141,107 @@
 
         td a { color: #1e3a5f; text-decoration: none; }
         td a:hover { text-decoration: underline; }
+
+        /* === Cards grid === */
+        .section-label {
+            font-size: 14px;
+            font-weight: 600;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+            padding-bottom: 6px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+
+        .deal-card {
+            background: #fff;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+            text-decoration: none;
+            color: inherit;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            transition: box-shadow 0.2s, transform 0.15s;
+            border-left: 4px solid transparent;
+            cursor: pointer;
+        }
+
+        .deal-card:hover {
+            box-shadow: 0 4px 16px rgba(0,0,0,0.13);
+            transform: translateY(-2px);
+        }
+
+        .deal-card.card-draft {
+            border-left-color: #bbb;
+        }
+
+        .deal-card.card-active {
+            border-left-color: #1565c0;
+        }
+
+        .card-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
+        .card-client {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1e3a5f;
+        }
+
+        .card-id {
+            font-size: 12px;
+            color: #999;
+        }
+
+        .card-subject {
+            font-size: 13px;
+            color: #555;
+            line-height: 1.4;
+        }
+
+        .card-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            font-size: 12px;
+            color: #888;
+            margin-top: auto;
+        }
+
+        .card-meta span {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .card-amount {
+            font-size: 18px;
+            font-weight: 700;
+            color: #333;
+        }
+
+        .card-deadline {
+            font-size: 12px;
+            color: #c62828;
+            font-weight: 500;
+        }
+
+        .card-deadline.ok {
+            color: #2e7d32;
+        }
     </style>
 </head>
 <body>
@@ -171,35 +272,73 @@
             <% } %>
         </div>
 
+        <%
+            const activeDeals = deals.filter(d => d.status === 'draft' || d.status === 'active');
+            const closedDeals = deals.filter(d => d.status !== 'draft' && d.status !== 'active');
+        %>
+
         <% if (deals.length === 0) { %>
             <div class="empty">Нет сделок</div>
         <% } else { %>
-            <table>
-                <thead>
-                    <tr>
-                        <th>#</th>
-                        <th>Клиент</th>
-                        <th>Предмет</th>
-                        <th>Сумма</th>
-                        <th>Инициатор</th>
-                        <th>Срок</th>
-                        <th>Статус</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <% deals.forEach(deal => { %>
-                        <tr>
-                            <td><a href="/deals/<%= deal.id %>"><%= deal.id %></a></td>
-                            <td><a href="/deals/<%= deal.id %>"><%= deal.client %></a></td>
-                            <td><%= deal.subject %></td>
-                            <td><%= deal.amount ? Number(deal.amount).toLocaleString('ru-RU') : '—' %></td>
-                            <td><%= deal.initiator_name || '—' %></td>
-                            <td><%= deal.deadline ? new Date(deal.deadline).toLocaleDateString('ru-RU') : '—' %></td>
-                            <td><span class="status status-<%= deal.status %>"><%= deal.status %></span></td>
-                        </tr>
+
+            <% if (activeDeals.length > 0) { %>
+                <div class="section-label">В работе (<%= activeDeals.length %>)</div>
+                <div class="cards-grid">
+                    <% activeDeals.forEach(deal => { %>
+                        <a href="/deals/<%= deal.id %>" class="deal-card card-<%= deal.status %>">
+                            <div class="card-top">
+                                <span class="card-client"><%= deal.client %></span>
+                                <span class="status status-<%= deal.status %>"><%= deal.status === 'draft' ? 'Черновик' : 'На согласовании' %></span>
+                            </div>
+                            <div class="card-subject"><%= deal.subject %></div>
+                            <% if (deal.amount) { %>
+                                <div class="card-amount"><%= Number(deal.amount).toLocaleString('ru-RU') %> &#8381;</div>
+                            <% } %>
+                            <div class="card-meta">
+                                <span class="card-id">#<%= deal.id %></span>
+                                <span><%= deal.initiator_name || '—' %></span>
+                                <% if (deal.deadline) { %>
+                                    <% const dl = new Date(deal.deadline); const now = new Date(); %>
+                                    <span class="card-deadline <%= dl > now ? 'ok' : '' %>">
+                                        &#128197; <%= dl.toLocaleDateString('ru-RU') %>
+                                    </span>
+                                <% } %>
+                            </div>
+                        </a>
                     <% }) %>
-                </tbody>
-            </table>
+                </div>
+            <% } %>
+
+            <% if (closedDeals.length > 0) { %>
+                <div class="section-label">Завершённые (<%= closedDeals.length %>)</div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Клиент</th>
+                            <th>Предмет</th>
+                            <th>Сумма</th>
+                            <th>Инициатор</th>
+                            <th>Срок</th>
+                            <th>Статус</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% closedDeals.forEach(deal => { %>
+                            <tr>
+                                <td><a href="/deals/<%= deal.id %>"><%= deal.id %></a></td>
+                                <td><a href="/deals/<%= deal.id %>"><%= deal.client %></a></td>
+                                <td><%= deal.subject %></td>
+                                <td><%= deal.amount ? Number(deal.amount).toLocaleString('ru-RU') : '—' %></td>
+                                <td><%= deal.initiator_name || '—' %></td>
+                                <td><%= deal.deadline ? new Date(deal.deadline).toLocaleDateString('ru-RU') : '—' %></td>
+                                <td><span class="status status-<%= deal.status %>"><%= deal.status %></span></td>
+                            </tr>
+                        <% }) %>
+                    </tbody>
+                </table>
+            <% } %>
+
         <% } %>
     </div>
 </body>

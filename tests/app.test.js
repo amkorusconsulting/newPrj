@@ -723,6 +723,87 @@ describe('Комментарии к документам', () => {
     });
 });
 
+// ===== AI Чат =====
+
+describe('AI Чат в сделке', () => {
+    let adminCookie, dealId, nonParticipantCookie;
+
+    beforeAll(async () => {
+        const loginRes = await request(app)
+            .post('/login')
+            .type('form')
+            .send({ email: testEmail, password: testPassword });
+        adminCookie = loginRes.headers['set-cookie'];
+
+        const dealRes = await pool.query(
+            `INSERT INTO deals (client, department, subject, initiator_id, created_by)
+             VALUES ($1, $2, $3, $4, $4) RETURNING id`,
+            ['Тест-Чат', 'Отдел', 'Сделка для чата', testUserId]
+        );
+        dealId = dealRes.rows[0].id;
+        await pool.query(
+            'INSERT INTO deal_participants (deal_id, user_id, role) VALUES ($1, $2, $3)',
+            [dealId, testUserId, 'initiator']
+        );
+
+        // Non-participant user
+        const hash = await bcrypt.hash('pass123', 10);
+        await pool.query(
+            'INSERT INTO users (email, name, password_hash) VALUES ($1, $2, $3) RETURNING id',
+            ['test-nonchat@test.com', 'НеУчастник', hash]
+        );
+        const npLogin = await request(app)
+            .post('/login')
+            .type('form')
+            .send({ email: 'test-nonchat@test.com', password: 'pass123' });
+        nonParticipantCookie = npLogin.headers['set-cookie'];
+    });
+
+    test('POST /deals/:id/chat без авторизации — редирект', async () => {
+        const res = await request(app)
+            .post(`/deals/${dealId}/chat`)
+            .send({ messages: [{ role: 'user', content: 'Привет' }] });
+
+        expect(res.status).toBe(302);
+        expect(res.headers.location).toBe('/');
+    });
+
+    test('POST /deals/:id/chat не-участник — 403', async () => {
+        const res = await request(app)
+            .post(`/deals/${dealId}/chat`)
+            .set('Cookie', nonParticipantCookie)
+            .set('Content-Type', 'application/json')
+            .send({ messages: [{ role: 'user', content: 'Привет' }] });
+
+        expect(res.status).toBe(403);
+    });
+
+    test('POST /deals/:id/chat без API-ключа — 503', async () => {
+        const origKey = process.env.ANTHROPIC_API_KEY;
+        delete process.env.ANTHROPIC_API_KEY;
+
+        const res = await request(app)
+            .post(`/deals/${dealId}/chat`)
+            .set('Cookie', adminCookie)
+            .set('Content-Type', 'application/json')
+            .send({ messages: [{ role: 'user', content: 'Привет' }] });
+
+        expect(res.status).toBe(503);
+
+        if (origKey) process.env.ANTHROPIC_API_KEY = origKey;
+    });
+
+    test('POST /deals/:id/chat пустые messages — 400', async () => {
+        const res = await request(app)
+            .post(`/deals/${dealId}/chat`)
+            .set('Cookie', adminCookie)
+            .set('Content-Type', 'application/json')
+            .send({ messages: [] });
+
+        expect(res.status).toBe(400);
+    });
+});
+
 // ===== Безопасность =====
 
 describe('Заголовки безопасности (Helmet)', () => {

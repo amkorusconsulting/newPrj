@@ -462,5 +462,201 @@
             </div>
         </div>
     </div>
+    <!-- AI Chat Widget -->
+    <style>
+        .chat-toggle {
+            position: fixed; bottom: 24px; right: 24px; width: 56px; height: 56px;
+            background: #1e3a5f; color: #fff; border: none; border-radius: 50%;
+            font-size: 24px; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            z-index: 1000; display: flex; align-items: center; justify-content: center;
+            transition: transform 0.2s;
+        }
+        .chat-toggle:hover { transform: scale(1.1); }
+        .chat-panel {
+            position: fixed; bottom: 92px; right: 24px; width: 420px; max-height: 520px;
+            background: #fff; border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+            z-index: 1000; display: none; flex-direction: column; overflow: hidden;
+        }
+        .chat-panel.open { display: flex; }
+        .chat-header {
+            background: #1e3a5f; color: #fff; padding: 14px 18px; font-size: 14px; font-weight: 600;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .chat-header button { background: none; border: none; color: #aac4e0; cursor: pointer; font-size: 18px; }
+        .chat-header button:hover { color: #fff; }
+        .chat-messages {
+            flex: 1; overflow-y: auto; padding: 16px; min-height: 280px; max-height: 360px;
+            display: flex; flex-direction: column; gap: 10px;
+        }
+        .chat-msg { max-width: 85%; padding: 10px 14px; border-radius: 12px; font-size: 13px; line-height: 1.5; word-wrap: break-word; white-space: pre-wrap; }
+        .chat-msg.user { align-self: flex-end; background: #e3f2fd; color: #1a1a1a; border-bottom-right-radius: 4px; }
+        .chat-msg.assistant { align-self: flex-start; background: #f5f5f5; color: #333; border-bottom-left-radius: 4px; }
+        .chat-msg.error { align-self: center; background: #fce4ec; color: #c62828; font-size: 12px; }
+        .chat-input-row {
+            padding: 12px; border-top: 1px solid #eee; display: flex; gap: 8px;
+        }
+        .chat-input-row textarea {
+            flex: 1; padding: 8px 12px; border: 1px solid #ddd; border-radius: 8px;
+            font-size: 13px; font-family: inherit; resize: none; min-height: 38px; max-height: 100px;
+        }
+        .chat-input-row textarea:focus { outline: none; border-color: #1e3a5f; }
+        .chat-input-row button {
+            padding: 8px 16px; background: #1e3a5f; color: #fff; border: none;
+            border-radius: 8px; font-size: 13px; cursor: pointer; white-space: nowrap;
+        }
+        .chat-input-row button:disabled { opacity: 0.5; cursor: not-allowed; }
+        .chat-typing { font-size: 12px; color: #888; padding: 0 16px 8px; display: none; }
+        @media (max-width: 500px) {
+            .chat-panel { width: calc(100vw - 16px); right: 8px; bottom: 80px; }
+        }
+    </style>
+
+    <button class="chat-toggle" id="chatToggle" title="AI-ассистент">&#x1F4AC;</button>
+    <div class="chat-panel" id="chatPanel">
+        <div class="chat-header">
+            <span>AI-ассистент</span>
+            <div>
+                <button onclick="chatClear()" title="Очистить">&#x1F5D1;</button>
+                <button onclick="chatClose()" title="Закрыть">&times;</button>
+            </div>
+        </div>
+        <div class="chat-messages" id="chatMessages">
+            <div class="chat-msg assistant">Здравствуйте! Я AI-ассистент. Задайте вопрос по документам этой сделки.</div>
+        </div>
+        <div class="chat-typing" id="chatTyping">AI печатает...</div>
+        <div class="chat-input-row">
+            <textarea id="chatInput" placeholder="Введите вопрос..." rows="1"
+                      onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();chatSend();}"></textarea>
+            <button id="chatSendBtn" onclick="chatSend()">Отправить</button>
+        </div>
+    </div>
+
+    <script>
+    (function() {
+        var dealId = <%= deal.id %>;
+        var messages = [];
+        var isStreaming = false;
+
+        var toggle = document.getElementById('chatToggle');
+        var panel = document.getElementById('chatPanel');
+        var msgContainer = document.getElementById('chatMessages');
+        var input = document.getElementById('chatInput');
+        var sendBtn = document.getElementById('chatSendBtn');
+        var typing = document.getElementById('chatTyping');
+
+        toggle.addEventListener('click', function() {
+            panel.classList.toggle('open');
+            if (panel.classList.contains('open')) input.focus();
+        });
+
+        window.chatClose = function() { panel.classList.remove('open'); };
+
+        window.chatClear = function() {
+            messages = [];
+            msgContainer.innerHTML = '<div class="chat-msg assistant">Здравствуйте! Я AI-ассистент. Задайте вопрос по документам этой сделки.</div>';
+        };
+
+        function addMsg(role, text) {
+            var div = document.createElement('div');
+            div.className = 'chat-msg ' + role;
+            div.textContent = text;
+            msgContainer.appendChild(div);
+            msgContainer.scrollTop = msgContainer.scrollHeight;
+            return div;
+        }
+
+        function setLoading(on) {
+            isStreaming = on;
+            sendBtn.disabled = on;
+            typing.style.display = on ? 'block' : 'none';
+        }
+
+        window.chatSend = function() {
+            var text = input.value.trim();
+            if (!text || isStreaming) return;
+
+            input.value = '';
+            input.style.height = 'auto';
+            messages.push({ role: 'user', content: text });
+            addMsg('user', text);
+
+            setLoading(true);
+            var assistantDiv = addMsg('assistant', '');
+
+            fetch('/deals/' + dealId + '/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ messages: messages })
+            }).then(function(response) {
+                if (!response.ok) {
+                    return response.json().then(function(data) {
+                        throw new Error(data.error || 'Ошибка сервера');
+                    });
+                }
+
+                var reader = response.body.getReader();
+                var decoder = new TextDecoder();
+                var fullText = '';
+                var buffer = '';
+
+                function read() {
+                    reader.read().then(function(result) {
+                        if (result.done) {
+                            if (fullText) messages.push({ role: 'assistant', content: fullText });
+                            setLoading(false);
+                            return;
+                        }
+
+                        buffer += decoder.decode(result.value, { stream: true });
+                        var lines = buffer.split('\n');
+                        buffer = lines.pop();
+
+                        for (var i = 0; i < lines.length; i++) {
+                            var line = lines[i];
+                            if (line.startsWith('data: ')) {
+                                var payload = line.slice(6);
+                                if (payload === '[DONE]') {
+                                    if (fullText) messages.push({ role: 'assistant', content: fullText });
+                                    setLoading(false);
+                                    return;
+                                }
+                                try {
+                                    var data = JSON.parse(payload);
+                                    if (data.error) {
+                                        assistantDiv.className = 'chat-msg error';
+                                        assistantDiv.textContent = data.error;
+                                        setLoading(false);
+                                        return;
+                                    }
+                                    if (data.text) {
+                                        fullText += data.text;
+                                        assistantDiv.textContent = fullText;
+                                        msgContainer.scrollTop = msgContainer.scrollHeight;
+                                    }
+                                } catch(e) {}
+                            }
+                        }
+                        read();
+                    }).catch(function(err) {
+                        assistantDiv.className = 'chat-msg error';
+                        assistantDiv.textContent = 'Ошибка соединения';
+                        setLoading(false);
+                    });
+                }
+                read();
+            }).catch(function(err) {
+                assistantDiv.className = 'chat-msg error';
+                assistantDiv.textContent = err.message || 'Ошибка соединения';
+                setLoading(false);
+            });
+        };
+
+        // Auto-resize textarea
+        input.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 100) + 'px';
+        });
+    })();
+    </script>
 </body>
 </html>

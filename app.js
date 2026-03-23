@@ -11,6 +11,7 @@ const dealsRoutes = require('./routes/deals');
 const documentsRoutes = require('./routes/documents');
 const commentsRoutes = require('./routes/comments');
 const auditRoutes = require('./routes/audit');
+const chatRoutes = require('./routes/chat');
 
 const app = express();
 
@@ -25,6 +26,7 @@ app.use(helmet({
             'upgrade-insecure-requests': null,
             'script-src': ["'self'", "'unsafe-inline'"],
             'script-src-attr': null,
+            'connect-src': ["'self'"],
         },
     },
 }));
@@ -48,5 +50,6 @@ app.use(dealsRoutes);
 app.use(documentsRoutes);
 app.use(commentsRoutes);
 app.use(auditRoutes);
+app.use(chatRoutes);
 
 module.exports = app;

@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Корус СПР — Руководство пользователя</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+<style>
+  /* === RESET & BASE === */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --korus-red: #F9423A;
+    --korus-blue: #002FA7;
+    --korus-navy: #121239;
+    --korus-purple: #7949F4;
+    --korus-lilac: #c252f7;
+    --korus-sky: #58C0ED;
+    --korus-white: #FFFFFF;
+    --korus-light: #f2f2f2;
+    --korus-grey: #A2ACAB;
+    --korus-yellow: #F9C546;
+  }
+
+  body {
+    font-family: 'Montserrat', Arial, sans-serif;
+    font-size: 11pt;
+    line-height: 1.6;
+    color: var(--korus-navy);
+    background: var(--korus-white);
+  }
+
+  /* === COVER PAGE === */
+  .cover {
+    page-break-after: always;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 80px 60px;
+    background: linear-gradient(135deg, var(--korus-navy) 0%, var(--korus-blue) 100%);
+    color: var(--korus-white);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .cover::before {
+    content: '{ }';
+    position: absolute;
+    right: -40px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 320pt;
+    font-weight: 900;
+    opacity: 0.06;
+    color: var(--korus-white);
+    letter-spacing: -20px;
+  }
+
+  .cover-logo {
+    font-size: 14pt;
+    font-weight: 700;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 60px;
+    color: var(--korus-red);
+  }
+
+  .cover-logo span {
+    color: var(--korus-white);
+    font-weight: 500;
+    text-transform: none;
+    letter-spacing: 1px;
+  }
+
+  .cover h1 {
+    font-size: 36pt;
+    font-weight: 900;
+    line-height: 1.15;
+    margin-bottom: 20px;
+    max-width: 600px;
+  }
+
+  .cover .subtitle {
+    font-size: 16pt;
+    font-weight: 500;
+    color: var(--korus-sky);
+    margin-bottom: 40px;
+  }
+
+  .cover .version {
+    font-size: 10pt;
+    font-weight: 400;
+    color: var(--korus-grey);
+    margin-top: auto;
+  }
+
+  /* === TOC === */
+  .toc {
+    page-break-after: always;
+    padding: 60px;
+  }
+
+  .toc h2 {
+    font-size: 22pt;
+    font-weight: 900;
+    color: var(--korus-navy);
+    margin-bottom: 30px;
+    padding-bottom: 10px;
+    border-bottom: 3px solid var(--korus-red);
+    display: inline-block;
+  }
+
+  .toc-list {
+    list-style: none;
+    counter-reset: toc-counter;
+  }
+
+  .toc-list li {
+    counter-increment: toc-counter;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--korus-light);
+    font-size: 11pt;
+    font-weight: 500;
+  }
+
+  .toc-list li::before {
+    content: counter(toc-counter, decimal-leading-zero) '.';
+    color: var(--korus-red);
+    font-weight: 700;
+    margin-right: 12px;
+    font-size: 12pt;
+  }
+
+  /* === CONTENT PAGES === */
+  .page {
+    padding: 50px 60px 60px 60px;
+    page-break-after: always;
+  }
+
+  .page:last-child {
+    page-break-after: avoid;
+  }
+
+  /* Section number + title */
+  .section-header {
+    margin-bottom: 30px;
+    padding-bottom: 12px;
+    border-bottom: 3px solid var(--korus-red);
+  }
+
+  .section-number {
+    font-size: 40pt;
+    font-weight: 900;
+    color: var(--korus-light);
+    line-height: 1;
+    margin-bottom: -8px;
+  }
+
+  .section-title {
+    font-size: 20pt;
+    font-weight: 700;
+    color: var(--korus-navy);
+    line-height: 1.3;
+  }
+
+  /* Subsection */
+  h3 {
+    font-size: 13pt;
+    font-weight: 700;
+    color: var(--korus-blue);
+    margin: 24px 0 10px 0;
+    padding-left: 14px;
+    border-left: 3px solid var(--korus-red);
+  }
+
+  h4 {
+    font-size: 11pt;
+    font-weight: 600;
+    color: var(--korus-navy);
+    margin: 16px 0 6px 0;
+  }
+
+  p {
+    margin-bottom: 10px;
+    text-align: justify;
+  }
+
+  /* Ordered / unordered lists */
+  ol, ul {
+    margin: 8px 0 14px 24px;
+  }
+
+  li {
+    margin-bottom: 4px;
+  }
+
+  /* Accent box (tips, important) */
+  .note {
+    background: var(--korus-light);
+    border-left: 4px solid var(--korus-blue);
+    padding: 12px 16px;
+    margin: 14px 0;
+    border-radius: 0 6px 6px 0;
+    font-size: 10pt;
+  }
+
+  .note.important {
+    border-left-color: var(--korus-red);
+    background: #fef5f5;
+  }
+
+  .note-label {
+    font-weight: 700;
+    color: var(--korus-blue);
+    margin-bottom: 2px;
+  }
+
+  .note.important .note-label {
+    color: var(--korus-red);
+  }
+
+  /* Tables */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0 18px 0;
+    font-size: 10pt;
+  }
+
+  thead th {
+    background: var(--korus-navy);
+    color: var(--korus-white);
+    font-weight: 600;
+    text-align: left;
+    padding: 10px 14px;
+    font-size: 10pt;
+  }
+
+  thead th:first-child {
+    border-radius: 6px 0 0 0;
+  }
+
+  thead th:last-child {
+    border-radius: 0 6px 0 0;
+  }
+
+  tbody td {
+    padding: 8px 14px;
+    border-bottom: 1px solid #e0e0e0;
+    vertical-align: top;
+  }
+
+  tbody tr:nth-child(even) {
+    background: var(--korus-light);
+  }
+
+  /* Inline highlights */
+  .badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 4px;
+    font-size: 9pt;
+    font-weight: 600;
+    color: var(--korus-white);
+    background: var(--korus-blue);
+  }
+
+  .badge.red { background: var(--korus-red); }
+  .badge.purple { background: var(--korus-purple); }
+  .badge.green { background: #2e9e2e; }
+  .badge.grey { background: var(--korus-grey); }
+
+  strong {
+    font-weight: 600;
+  }
+
+  /* Footer */
+  .page-footer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 36px;
+    background: var(--korus-navy);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 60px;
+    font-size: 8pt;
+    color: var(--korus-grey);
+  }
+
+  .page-footer .footer-brand {
+    color: var(--korus-red);
+    font-weight: 700;
+    letter-spacing: 1px;
+  }
+
+  /* Bracket decorative element */
+  .bracket-decor {
+    color: var(--korus-red);
+    font-weight: 900;
+    opacity: 0.15;
+    font-size: 120pt;
+    position: absolute;
+    right: 30px;
+    bottom: 50px;
+    line-height: 1;
+  }
+
+  /* Status pill styling */
+  .status-pill {
+    display: inline-block;
+    padding: 3px 12px;
+    border-radius: 12px;
+    font-size: 9pt;
+    font-weight: 600;
+    margin-right: 4px;
+  }
+
+  .status-draft { background: #e8e8e8; color: #555; }
+  .status-active { background: #dbeafe; color: var(--korus-blue); }
+  .status-approved { background: #d1fae5; color: #065f46; }
+  .status-rejected { background: #fee2e2; color: #991b1b; }
+  .status-withdrawn { background: #fef3c7; color: #92400e; }
+
+  @media print {
+    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .cover { height: auto; min-height: 100vh; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ==================== COVER ==================== -->
+<div class="cover">
+  <div class="cover-logo">КОРУС <span>Консалтинг</span></div>
+  <h1>Корус СПР</h1>
+  <div class="subtitle">Руководство пользователя</div>
+  <p style="font-size:11pt; max-width:480px; opacity:0.85; line-height:1.5;">
+    Система принятия решений по крупным сделкам.<br>
+    Контроль доступа, согласование, документооборот и аналитика.
+  </p>
+  <div class="version">Версия 1.0 &nbsp;|&nbsp; Март 2026 &nbsp;|&nbsp; «КОРУС Консалтинг»</div>
+</div>
+
+<!-- ==================== TOC ==================== -->
+<div class="toc">
+  <h2>Содержание</h2>
+  <ol class="toc-list">
+    <li>О системе</li>
+    <li>Вход в систему</li>
+    <li>Дашборд (Список сделок)</li>
+    <li>Статусы сделки</li>
+    <li>Карточка сделки</li>
+    <li>Работа с документами</li>
+    <li>Комментарии к документам</li>
+    <li>Процесс согласования</li>
+    <li>AI-ассистент (Чат-бот)</li>
+    <li>Управление пользователями</li>
+    <li>Журнал аудита</li>
+    <li>Навигация по системе</li>
+    <li>Часто задаваемые вопросы</li>
+  </ol>
+</div>
+
+<!-- ==================== 1. О СИСТЕМЕ ==================== -->
+<div class="page">
+  <div class="section-header">
+    <div class="section-number">01</div>
+    <div class="section-title">О системе</div>
+  </div>
+
+  <p>
+    «Корус СПР» — веб-система для организации многосторонних согласований крупных сделок.
+    Система обеспечивает контроль доступа по ролям, загрузку и анализ документов,
+    голосование, комментирование и полное логирование всех действий.
+  </p>
+
+  <h3>1.1. Роли пользователей</h3>
+
+  <table>
+    <thead>
+      <tr><th>Роль</th><th>Описание</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Администратор</strong></td>
+        <td>Создаёт пользователей и сделки, управляет составом участников, проставляет итоговые решения, видит журнал аудита</td>
+      </tr>
+      <tr>
+        <td><strong>Инициатор</strong></td>
+        <td>Назначается на конкретную сделку. Загружает документы, запускает согласование, может отозвать сделку</td>
+      </tr>
+      <tr>
+        <td><strong>Согласующий (постоянный)</strong></td>
+        <td>Входит в постоянную группу согласующих. Автоматически добавляется ко всем новым сделкам</td>
+      </tr>
+      <tr>
+        <td><strong>Приглашённый согласующий</strong></td>
+        <td>Добавляется администратором к конкретной сделке дополнительно к постоянной группе</td>
+      </tr>
+      <tr>
+        <td><strong>Наблюдатель</strong></td>
+        <td>Видит сделку и документы, но не участвует в голосовании</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ==================== 2. ВХОД В СИСТЕМУ ==================== -->
+<div class="page">
+  <div class="section-header">
+    <div class="section-number">02</div>
+    <div class="section-title">Вход в систему</div>
+  </div>
+
+  <ol>
+    <li>Откройте адрес системы в браузере.</li>
+    <li>Введите <strong>Email</strong> и <strong>Пароль</strong>, выданные администратором.</li>
+    <li>Нажмите <strong>Войти</strong>.</li>
+  </ol>
+
+  <div class="note">
+    <div class="note-label">Сессия</div>
+    Сессия действует 8 часов. После этого потребуется повторный вход.
+    Для выхода нажмите <strong>Выйти</strong> в правом верхнем углу любой страницы.
+  </div>
+
+  <div class="note important">
+    <div class="note-label">Внимание</div>
+    Если при входе отображается ошибка «Учётная запись деактивирована» — обратитесь к администратору.
+  </div>
+</div>
+
+<!-- ==================== 3. ДАШБОРД ==================== -->
+<div class="page">
+  <div class="section-header">
+    <div class="section-number">03</div>
+    <div class="section-title">Дашборд (Список сделок)</div>
+  </div>
+
+  <p>
+    После входа открывается страница <strong>Сделки</strong> — список всех доступных вам сделок.
+  </p>
+
+  <ul>
+    <li><strong>Администратор</strong> видит все сделки в системе.</li>
+    <li><strong>Остальные пользователи</strong> видят только сделки, в которых являются участниками.</li>
+  </ul>
+
+  <p>Для каждой сделки отображаются: клиент, предмет, статус, инициатор, дата создания.</p>
+
+  <div class="note">
+    <div class="note-label">Совет</div>
+    Нажмите на сделку, чтобы открыть её карточку.
+  </div>
+</div>
+
+<!-- ==================== 4. СТАТУСЫ ==================== -->
+<div class="page">
+  <div class="section-header">
+    <div class="section-number">04</div>
+    <div class="section-title">Статусы сделки</div>
+  </div>
+
+  <table>
+    <thead>
+      <tr><th>Статус</th><th>Значение</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="status-pill status-draft">Draft</span></td>
+        <td>Сделка создана, но согласование не запущено</td>
+      </tr>
+      <tr>
+        <td><span class="status-pill status-active">Active</span></td>
+        <td>Согласование запущено, идёт голосование</td>
+      </tr>
+      <tr>
+        <td><span class="status-pill status-approved">Approved</span></td>
+        <td>Итоговое решение — одобрить</td>
+      </tr>
+      <tr>
+        <td><span class="status-pill status-rejected">Rejected</span></td>
+        <td>Итоговое решение — отклонить</td>
+      </tr>
+      <tr>
+        <td><span class="status-pill status-withdrawn">Withdrawn</span></td>
+        <td>Сделка отозвана инициатором или администратором</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="note important">
+    <div class="note-label">Важно</div>
+    После закрытия сделки (Approved / Rejected / Withdrawn) все изменения блокируются: нельзя загружать документы, голосовать, добавлять комментарии. Сделка остаётся доступной для просмотра.
+  </div>
+</div>
+
+<!-- ==================== 5. КАРТОЧКА СДЕЛКИ ==================== -->
+<div class="page">
+  <div class="section-header">
+    <div class="section-number">05</div>
+    <div class="section-title">Карточка сделки</div>
+  </div>
+
+  <p>Карточка сделки содержит всю информацию и инструменты для работы со сделкой.</p>
+
+  <h3>5.1. Атрибуты сделки</h3>
+  <table>
+    <thead>
+      <tr><th>Поле</th><th>Описание</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>Клиент</strong></td><td>Наименование клиента</td></tr>
+      <tr><td><strong>Подразделение</strong></td><td>Инициирующее подразделение</td></tr>
+      <tr><td><strong>Предмет</strong></td><td>Предмет сделки</td></tr>
+      <tr><td><strong>Сумма</strong></td><td>Общая сумма сделки</td></tr>
+      <tr><td><strong>Крайний срок</strong></td><td>Дата и время завершения согласования</td></tr>
+      <tr><td><strong>Инициатор</strong></td><td>Ответственный за сделку</td></tr>
+      <tr><td><strong>Создал</strong></td><td>Кто создал сделку и когда</td></tr>
+    </tbody>
+  </table>
+
+  <h3>5.2. Участники</h3>
+  <p>В правой панели отображается список участников сделки с их ролями:</p>
+  <ul>
+    <li><span class="badge">Инициатор</span></li>
+    <li><span class="badge purple">Согласующий</span></li>
+    <li><span class="badge green">Приглашённый</span></li>
+    <li><span class="badge grey">Наблюдатель</span></li>
+  </ul>
+  <p style="margin-top:10px;">Администратор может добавлять и удалять участников, пока сделка не закрыта.</p>
+</div>
+
+<!-- ==================== 6. ДОКУМЕНТЫ ==================== -->
+<div class="page">
+  <div class="section-header">
+    <div class="section-number">06</div>
+    <div class="section-title">Работа с документами</div>
+  </div>
+
+  <h3>6.1. Загрузка документов</h3>
+  <p>Документы может загружать инициатор или администратор (пока сделка не закрыта).</p>
+  <p><strong>Способы загрузки:</strong></p>
+  <ul>
+    <li>Перетащить файлы (drag &amp; drop) в область загрузки на карточке сделки.</li>
+    <li>Нажать на область загрузки и выбрать файлы через диалог.</li>
+  </ul>
+
+  <div class="note">
+    <div class="note-label">Ограничения</div>
+    Максимальный размер одного файла: <strong>50 МБ</strong>.<br>
+    Можно загружать несколько файлов одновременно (до 20).<br>
+    Поддерживаются любые форматы файлов.
+  </div>
+
+  <h3>6.2. Скачивание документов</h3>
+  <p>
+    Нажмите на имя документа в списке. Скачивание доступно всем участникам сделки.
+    Каждое скачивание фиксируется в журнале аудита.
+  </p>
+
+  <h3>6.3. Удаление документов</h3>
+  <p>
+    Кнопка удаления (красный крестик) доступна инициатору и администратору.
+    Перед удалением система запросит подтверждение.
+  </p>
+
+  <div class="note important">
+    <div class="note-label">Внимание</div>
+    При удалении документа также удаляются все его комментарии.
+  </div>
+</div>
+
+<!-- ==================== 7. КОММЕНТАРИИ ==================== -->
+<div class="page">
+  <div class="section-header">
+    <div class="section-number">07</div>
+    <div class="section-title">Комментарии к документам</div>
+  </div>
+
+  <h3>7.1. Добавление комментария</h3>
+  <p>
+    Под каждым документом в карточке сделки есть поле для комментария.
+    Введите текст и нажмите <strong>Отправить</strong>.
+  </p>
+  <p>Комментирование доступно всем участникам сделки, пока она не закрыта.</p>
+
+  <h3>7.2. Просмотр всех комментариев</h3>
+  <p>
+    Ссылка <strong>Все комментарии (N)</strong> над списком документов открывает
+    сводную страницу со всеми комментариями по сделке, сгруппированными по документам.
+  </p>
+</div>
+
+<!-- ==================== 8. СОГЛАСОВАНИЕ ==================== -->
+<div class="page">
+  <div class="section-header">
+    <div class="section-number">08</div>
+    <div class="section-title">Процесс согласования</div>
+  </div>
+
+  <h3>8.1. Запуск согласования</h3>
+  <ol>
+    <li>Убедитесь, что все документы загружены и участники назначены.</li>
+    <li>В блоке <strong>Запуск согласования</strong> нажмите <strong>Запустить согласование</strong>.</li>
+    <li>Статус сделки изменится на <span class="status-pill status-active">Active</span>.</li>
+  </ol>
+  <p>Запустить согласование может инициатор или администратор. Кнопка доступна только для сделок в статусе <span class="status-pill status-draft">Draft</span>.</p>
+
+  <h3>8.2. Голосование</h3>
+  <p>После запуска согласования согласующие (постоянные и приглашённые) могут проголосовать:</p>
+  <ol>
+    <li>В блоке <strong>Голосование</strong> выберите решение:
+      <ul>
+        <li><strong>Согласовать</strong> — можно без комментария</li>
+        <li><strong>Не согласовать</strong> — комментарий обязателен</li>
+      </ul>
+    </li>
+    <li>Опционально добавьте комментарий и/или оговорку.</li>
+    <li>Нажмите <strong>Проголосовать</strong>.</li>
+  </ol>
+
+  <div class="note important">
+    <div class="note-label">Важно</div>
+    Проголосовать можно только один раз. Решение нельзя отозвать.<br>
+    К решению можно добавить или изменить оговорку в любое время после голосования.<br>
+    Все решения видны всем согласующим.
+  </div>
+
+  <h3>8.3. Оговорка к решению</h3>
+  <p>
+    После голосования в таблице голосов рядом с вашим решением появляется поле для оговорки.
+    Введите текст и нажмите <strong>Сохранить</strong>. Оговорку можно изменять неограниченное количество раз.
+  </p>
+
+  <h3>8.4. Отзыв сделки</h3>
+  <ol>
+    <li>В блоке <strong>Отзыв сделки</strong> введите причину отзыва (обязательно).</li>
+    <li>Нажмите <strong>Отозвать сделку</strong>.</li>
+    <li>Статус изменится на <span class="status-pill status-withdrawn">Withdrawn</span>.</li>
+  </ol>
+  <p>Отозвать сделку может инициатор или администратор.</p>
+
+  <h3>8.5. Итоговое решение</h3>
+  <ol>
+    <li>В блоке <strong>Итоговое решение</strong> выберите:
+      <ul>
+        <li><strong>Одобрить</strong> — статус <span class="status-pill status-approved">Approved</span></li>
+        <li><strong>Отклонить</strong> — статус <span class="status-pill status-rejected">Rejected</span></li>
+      </ul>
+    </li>
+    <li>Опционально добавьте комментарий.</li>
+    <li>Нажмите <strong>Закрыть сделку</strong>.</li>
+  </ol>
+
+  <div class="note">
+    <div class="note-label">Примечание</div>
+    Администратор может вынести итоговое решение в любой момент, не дожидаясь завершения голосования.
+  </div>
+</div>
+
+<!-- ==================== 9. AI-АССИСТЕНТ ==================== -->
+<div class="page">
+  <div class="section-header">
+    <div class="section-number">09</div>
+    <div class="section-title">AI-ассистент (Чат-бот)</div>
+  </div>
+
+  <p>В каждой карточке сделки доступен AI-ассистент, который анализирует прикреплённые документы и отвечает на вопросы по их содержимому.</p>
+
+  <h3>9.1. Как открыть</h3>
+  <p>Нажмите круглую кнопку чата в правом нижнем углу экрана.</p>
+
+  <h3>9.2. Как использовать</h3>
+  <ul>
+    <li>Введите вопрос и нажмите <strong>Отправить</strong> или <strong>Enter</strong>.</li>
+    <li>Ответ появляется в реальном времени (посимвольно).</li>
+    <li>Для переноса строки используйте <strong>Shift + Enter</strong>.</li>
+  </ul>
+
+  <h3>9.3. Поддерживаемые форматы документов</h3>
+  <table>
+    <thead>
+      <tr><th>Формат</th><th>Расширения</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>PDF</td><td>.pdf</td></tr>
+      <tr><td>Microsoft Word</td><td>.docx</td></tr>
+      <tr><td>Microsoft Excel</td><td>.xlsx, .xls</td></tr>
+      <tr><td>Текстовые файлы</td><td>.txt</td></tr>
+      <tr><td>CSV-таблицы</td><td>.csv</td></tr>
+    </tbody>
+  </table>
+
+  <h3>9.4. Примеры вопросов</h3>
+  <ul>
+    <li>«Какая сумма договора указана в документах?»</li>
+    <li>«Перечисли основные условия контракта»</li>
+    <li>«Есть ли упоминание штрафных санкций?»</li>
+    <li>«Сравни условия оплаты в разных документах»</li>
+    <li>«Какие риски ты видишь в этой сделке?»</li>
+  </ul>
+
+  <h3>9.5. Ограничения</h3>
+  <table>
+    <thead>
+      <tr><th>Параметр</th><th>Значение</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Максимум текста из одного файла</td><td>50 000 символов</td></tr>
+      <tr><td>Общий объём из всех файлов</td><td>150 000 символов</td></tr>
+      <tr><td>Запросов в минуту</td><td>20 на пользователя</td></tr>
+      <tr><td>История чата</td><td>Хранится до перезагрузки страницы</td></tr>
+    </tbody>
+  </table>
+
+  <h3>9.6. Очистка чата</h3>
+  <p>Нажмите иконку корзины в заголовке панели чата для начала нового разговора.</p>
+</div>
+
+<!-- ==================== 10. ПОЛЬЗОВАТЕЛИ ==================== -->
+<div class="page">
+  <div class="section-header">
+    <div class="section-number">10</div>
+    <div class="section-title">Управление пользователями</div>
+  </div>
+
+  <p><span class="badge red">Только администратор</span></p>
+  <p>Раздел <strong>Пользователи</strong> доступен из верхнего меню.</p>
+
+  <h3>10.1. Создание пользователя</h3>
+  <ol>
+    <li>Заполните форму: <strong>Email</strong>, <strong>Имя</strong>, <strong>Пароль</strong>.</li>
+    <li>При необходимости отметьте галочку <strong>Администратор</strong>.</li>
+    <li>Нажмите <strong>Создать</strong>.</li>
+  </ol>
+
+  <div class="note">
+    <div class="note-label">Требования к паролю</div>
+    Минимум 6 символов.
+  </div>
+
+  <h3>10.2. Деактивация пользователя</h3>
+  <p>Нажмите кнопку включения/отключения рядом с пользователем. Деактивированный пользователь не сможет войти в систему.</p>
+
+  <h3>10.3. Смена пароля</h3>
+  <p>Администратор может сменить пароль любому пользователю через форму в списке пользователей.</p>
+
+  <h3>10.4. Постоянная группа согласующих</h3>
+  <p>
+    Администратор может добавить пользователя в постоянную группу согласующих или убрать из неё.
+    Пользователи из этой группы автоматически добавляются ко всем новым сделкам в роли «Согласующий».
+  </p>
+
+  <div class="note">
+    <div class="note-label">Примечание</div>
+    Изменения в составе группы применяются только к новым сделкам и не затрагивают уже созданные.
+  </div>
+</div>
+
+<!-- ==================== 11. АУДИТ ==================== -->
+<div class="page">
+  <div class="section-header">
+    <div class="section-number">11</div>
+    <div class="section-title">Журнал аудита</div>
+  </div>
+
+  <p><span class="badge red">Только администратор</span></p>
+  <p>Раздел <strong>Журнал</strong> доступен из верхнего меню. Журнал содержит полный лог всех действий в системе.</p>
+
+  <table>
+    <thead>
+      <tr><th>Тип действия</th><th>Описание</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Создание сделки</td><td>Кто и когда создал сделку</td></tr>
+      <tr><td>Редактирование сделки</td><td>Изменение атрибутов</td></tr>
+      <tr><td>Запуск согласования</td><td>Перевод в статус Active</td></tr>
+      <tr><td>Закрытие сделки</td><td>Итоговое решение</td></tr>
+      <tr><td>Отзыв сделки</td><td>Отзыв с комментарием</td></tr>
+      <tr><td>Добавление / удаление участника</td><td>Изменения состава</td></tr>
+      <tr><td>Голосование</td><td>Решение согласующего</td></tr>
+      <tr><td>Изменение оговорки</td><td>Обновление текста оговорки</td></tr>
+      <tr><td>Загрузка документа</td><td>Имя загруженного файла</td></tr>
+      <tr><td>Скачивание документа</td><td>Кто скачал и когда</td></tr>
+      <tr><td>Удаление документа</td><td>Имя удалённого файла</td></tr>
+      <tr><td>Комментарий</td><td>Добавление комментария к документу</td></tr>
+    </tbody>
+  </table>
+
+  <div class="note">
+    <div class="note-label">Пагинация</div>
+    Журнал отображается с пагинацией — 50 записей на страницу.
+  </div>
+</div>
+
+<!-- ==================== 12. НАВИГАЦИЯ ==================== -->
+<div class="page">
+  <div class="section-header">
+    <div class="section-number">12</div>
+    <div class="section-title">Навигация по системе</div>
+  </div>
+
+  <table>
+    <thead>
+      <tr><th>Элемент</th><th>Описание</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>Верхняя панель</strong></td><td>Логотип, имя пользователя, кнопка «Выйти»</td></tr>
+      <tr><td><strong>Меню</strong></td><td>Сделки (все), Пользователи (админ), Журнал (админ)</td></tr>
+      <tr><td><strong>Карточка сделки</strong></td><td>Клик по сделке в списке</td></tr>
+      <tr><td><strong>Кнопка «К списку»</strong></td><td>Возврат к дашборду из карточки</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ==================== 13. FAQ ==================== -->
+<div class="page">
+  <div class="section-header">
+    <div class="section-number">13</div>
+    <div class="section-title">Часто задаваемые вопросы</div>
+  </div>
+
+  <h3>Я не вижу сделку в списке</h3>
+  <p>Вы не являетесь участником этой сделки. Попросите администратора добавить вас.</p>
+
+  <h3>Я не могу загрузить документ</h3>
+  <p>Загрузка доступна только инициатору и администратору. Также нельзя загружать документы в закрытые сделки.</p>
+
+  <h3>Я не могу проголосовать</h3>
+  <p>Голосование доступно только согласующим (постоянным и приглашённым) и только по активным сделкам.</p>
+
+  <h3>Я хочу изменить своё решение</h3>
+  <p>Решение нельзя отозвать, но вы можете добавить или изменить оговорку к нему.</p>
+
+  <h3>AI-ассистент показывает ошибку</h3>
+  <p>Возможные причины: не настроен API-ключ, закончились кредиты API, вы не участник сделки. Подробнее — в сообщении об ошибке.</p>
+
+  <h3>Как сменить свой пароль?</h3>
+  <p>Обратитесь к администратору — он может сменить пароль через раздел «Пользователи».</p>
+
+  <br><br>
+  <div style="text-align: center; color: var(--korus-grey); font-size: 9pt; border-top: 1px solid var(--korus-light); padding-top: 20px;">
+    &copy; 2026 «КОРУС Консалтинг» &nbsp;|&nbsp; Корус СПР v1.0 &nbsp;|&nbsp; Руководство пользователя
+  </div>
+</div>
+
+</body>
+</html>
