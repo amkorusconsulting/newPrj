@@ -6,7 +6,7 @@ function authRequired(req, res, next) {
         return res.redirect('/');
     }
     try {
-        const user = jwt.verify(token, process.env.JWT_SECRET);
+        const user = jwt.verify(token, process.env.JWT_SECRET, { algorithms: ['HS256'] });
         req.user = user;
         next();
     } catch (err) {
