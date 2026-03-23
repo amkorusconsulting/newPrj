@@ -4,17 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Корус СПР — Пользователи</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;900&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #f0f2f5;
+            font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #f2f2f2;
             min-height: 100vh;
         }
 
         .header {
-            background: #1e3a5f;
+            background: #121239;
             color: #fff;
             padding: 16px 32px;
             display: flex;
@@ -22,7 +23,8 @@
             align-items: center;
         }
 
-        .header h1 { font-size: 18px; font-weight: 600; }
+        .header h1 { font-size: 18px; font-weight: 700; letter-spacing: 0.5px; }
+        .header h1 .brand-k { color: #F9423A; }
 
         .header-right {
             display: flex;
@@ -32,14 +34,14 @@
         }
 
         .header-right a {
-            color: #aac4e0;
+            color: rgba(255,255,255,0.6);
             text-decoration: none;
         }
 
         .header-right a:hover { color: #fff; }
 
         .badge {
-            background: #2d5a87;
+            background: rgba(255,255,255,0.12);
             padding: 4px 10px;
             border-radius: 12px;
             font-size: 12px;
@@ -61,8 +63,8 @@
             border-bottom: 2px solid transparent;
         }
 
-        nav a:hover { color: #1e3a5f; }
-        nav a.active { color: #1e3a5f; border-bottom-color: #1e3a5f; }
+        nav a:hover { color: #121239; }
+        nav a.active { color: #121239; border-bottom-color: #F9423A; }
 
         .container {
             max-width: 1100px;
@@ -122,7 +124,7 @@
         }
 
         .form-group input:focus {
-            border-color: #2d5a87;
+            border-color: #002FA7;
         }
 
         .checkbox-group {
@@ -148,8 +150,8 @@
             display: inline-block;
         }
 
-        .btn-primary { background: #1e3a5f; color: #fff; }
-        .btn-primary:hover { background: #2d5a87; }
+        .btn-primary { background: #002FA7; color: #fff; }
+        .btn-primary:hover { background: #0038c7; }
 
         .btn-sm {
             padding: 4px 12px;
@@ -159,8 +161,8 @@
         .btn-success { background: #2e7d32; color: #fff; }
         .btn-success:hover { background: #388e3c; }
 
-        .btn-danger { background: #c62828; color: #fff; }
-        .btn-danger:hover { background: #d32f2f; }
+        .btn-danger { background: #F9423A; color: #fff; }
+        .btn-danger:hover { background: #e03830; }
 
         .btn-warning { background: #e65100; color: #fff; }
         .btn-warning:hover { background: #ef6c00; }
@@ -206,7 +208,7 @@
             font-weight: 600;
         }
 
-        .tag-admin { background: #e3f2fd; color: #1565c0; }
+        .tag-admin { background: #e0e7ff; color: #002FA7; }
         .tag-approver { background: #e8f5e9; color: #2e7d32; }
         .tag-inactive { background: #fce4ec; color: #c62828; }
 
@@ -232,7 +234,7 @@
 </head>
 <body>
     <div class="header">
-        <h1>Корус СПР</h1>
+        <h1><span class="brand-k">К</span>ОРУС СПР</h1>
         <div class="header-right">
             <span><%= user.name %></span>
             <span class="badge">Администратор</span>

@@ -4,16 +4,34 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Корус СПР — Вход</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;900&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #1e3a5f 0%, #2d5a87 50%, #1e3a5f 100%);
+            font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #121239 0%, #002FA7 100%);
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        body::before {
+            content: '{ }';
+            position: fixed;
+            right: -60px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-family: 'Montserrat', sans-serif;
+            font-size: 40vw;
+            font-weight: 900;
+            opacity: 0.04;
+            color: #fff;
+            letter-spacing: -3vw;
+            pointer-events: none;
         }
 
         .login-card {
@@ -23,6 +41,8 @@
             width: 400px;
             max-width: 90vw;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            position: relative;
+            z-index: 1;
         }
 
         .logo {
@@ -32,14 +52,20 @@
 
         .logo h1 {
             font-size: 24px;
-            color: #1e3a5f;
-            font-weight: 700;
+            color: #121239;
+            font-weight: 900;
+            letter-spacing: 1px;
+        }
+
+        .logo h1 .brand-k {
+            color: #F9423A;
         }
 
         .logo p {
             font-size: 13px;
-            color: #888;
+            color: #A2ACAB;
             margin-top: 4px;
+            font-weight: 500;
         }
 
         .form-group {
@@ -61,47 +87,50 @@
             border: 1px solid #ddd;
             border-radius: 8px;
             font-size: 15px;
+            font-family: 'Montserrat', sans-serif;
             transition: border-color 0.2s;
             outline: none;
         }
 
         input:focus {
-            border-color: #2d5a87;
-            box-shadow: 0 0 0 3px rgba(45, 90, 135, 0.1);
+            border-color: #002FA7;
+            box-shadow: 0 0 0 3px rgba(0, 47, 167, 0.1);
         }
 
         button {
             width: 100%;
             padding: 14px;
-            background: #1e3a5f;
+            background: #002FA7;
             color: #fff;
             border: none;
             border-radius: 8px;
             font-size: 16px;
             font-weight: 600;
+            font-family: 'Montserrat', sans-serif;
             cursor: pointer;
             transition: background 0.2s;
         }
 
         button:hover {
-            background: #2d5a87;
+            background: #0038c7;
         }
 
         .error {
-            background: #fee;
-            color: #c33;
+            background: #fef5f5;
+            color: #F9423A;
             padding: 10px 14px;
             border-radius: 8px;
             font-size: 14px;
             margin-bottom: 20px;
             text-align: center;
+            border-left: 3px solid #F9423A;
         }
     </style>
 </head>
 <body>
     <div class="login-card">
         <div class="logo">
-            <h1>Корус СПР</h1>
+            <h1><span class="brand-k">К</span>ОРУС СПР</h1>
             <p>Система принятия решений</p>
         </div>
         <% if (error) { %>
