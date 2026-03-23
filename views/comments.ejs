@@ -30,6 +30,18 @@
         .comment-doc { display: inline-block; background: #e0e7ff; color: #002FA7; padding: 1px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
         .comment-text { font-size: 14px; color: #333; line-height: 1.5; }
         .empty { text-align: center; padding: 48px; color: #999; font-size: 15px; }
+
+        /* === Mobile === */
+        @media (max-width: 768px) {
+            .header { padding: 12px 16px; }
+            .header h1 { font-size: 16px; }
+            .header-right { gap: 10px; font-size: 13px; }
+            nav { padding: 0 16px; overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; }
+            nav a { padding: 10px 12px; font-size: 13px; }
+            .container { margin: 16px auto; padding: 0 12px; }
+            .page-header { flex-direction: column; align-items: flex-start; gap: 8px; }
+            .comment-item { padding: 12px 14px; }
+        }
     </style>
 </head>
 <body>
