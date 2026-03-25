@@ -65,13 +65,13 @@ router.post('/deals/:id/chat', authRequired, async (req, res) => {
 
         // Get documents and extract texts
         const docsResult = await pool.query(
-            'SELECT id, filename, filepath, uploaded_at FROM documents WHERE deal_id = $1 ORDER BY uploaded_at',
+            'SELECT id, filename, filedata, uploaded_at FROM documents WHERE deal_id = $1 ORDER BY uploaded_at',
             [dealId]
         );
         const docTexts = await extractAllTexts(docsResult.rows);
 
         // Build system prompt
-        let systemPrompt = `Ты — AI-ассистент системы "Корус СПР" (Система принятия решений). Помогаешь анализировать документы сделки и отвечаешь на вопросы по их содержимому.
+        let systemPrompt = `Ты — AI-ассистент системы "КОРУС Крупные сделки". Помогаешь анализировать документы сделки и отвечаешь на вопросы по их содержимому.
 
 Данные сделки:
 - ID: ${deal.id}

@@ -1,4 +1,3 @@
-const fs = require('fs');
 const path = require('path');
 
 const MAX_PER_FILE = 50000;
@@ -11,29 +10,28 @@ function getCacheKey(files) {
     return files.map(f => `${f.id}:${f.uploaded_at}`).sort().join('|');
 }
 
-async function extractText(filepath, filename) {
+async function extractText(buffer, filename) {
     const ext = path.extname(filename).toLowerCase();
 
     if (ext === '.txt' || ext === '.csv') {
-        return fs.readFileSync(filepath, 'utf-8');
+        return buffer.toString('utf-8');
     }
 
     if (ext === '.pdf') {
         const pdfParse = require('pdf-parse');
-        const buffer = fs.readFileSync(filepath);
         const data = await pdfParse(buffer);
         return data.text;
     }
 
     if (ext === '.docx') {
         const mammoth = require('mammoth');
-        const result = await mammoth.extractRawText({ path: filepath });
+        const result = await mammoth.extractRawText({ buffer });
         return result.value;
     }
 
     if (ext === '.xlsx' || ext === '.xls') {
         const XLSX = require('xlsx');
-        const workbook = XLSX.readFile(filepath);
+        const workbook = XLSX.read(buffer, { type: 'buffer' });
         const texts = [];
         for (const sheetName of workbook.SheetNames) {
             const sheet = workbook.Sheets[sheetName];
@@ -58,7 +56,9 @@ async function extractAllTexts(documents) {
 
     for (const doc of documents) {
         try {
-            let text = await extractText(doc.filepath, doc.filename);
+            if (!doc.filedata) continue;
+
+            let text = await extractText(doc.filedata, doc.filename);
             if (!text) continue;
 
             if (text.length > MAX_PER_FILE) {

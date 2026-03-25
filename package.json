@@ -5,11 +5,11 @@
   "scripts": {
     "start": "node index.js",
     "dev": "node --watch index.js",
-    "test": "jest --forceExit --detectOpenHandles"
+    "test": "NODE_ENV=test jest --forceExit --detectOpenHandles"
   },
   "author": "amkorusconsulting",
   "license": "ISC",
-  "description": "Корус СПР — Система принятия решений по крупным сделкам",
+  "description": "КОРУС — Согласование крупных сделок",
   "dependencies": {
     "@anthropic-ai/sdk": "^0.80.0",
     "bcrypt": "^6.0.0",
@@ -24,6 +24,7 @@
     "nodemailer": "^8.0.3",
     "pdf-parse": "^2.4.5",
     "pg": "^8.20.0",
+    "resend": "^6.9.4",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {

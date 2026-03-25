@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Корус СПР — Пользователи</title>
+    <title>КОРУС Крупные сделки — Пользователи</title>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;900&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -23,8 +23,9 @@
             align-items: center;
         }
 
-        .header h1 { font-size: 18px; font-weight: 700; letter-spacing: 0.5px; }
+        .header h1 { font-size: 16px; font-weight: 700; letter-spacing: 0.3px; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
         .header h1 .brand-k { color: #F9423A; }
+        .header h1 .brand-sub { font-weight: 600; font-size: 14px; color: rgba(255,255,255,0.55); }
 
         .header-right {
             display: flex;
@@ -234,7 +235,8 @@
         /* === Mobile === */
         @media (max-width: 768px) {
             .header { padding: 12px 16px; }
-            .header h1 { font-size: 16px; }
+            .header h1 { font-size: 14px; }
+            .header h1 .brand-sub { font-size: 11px; }
             .header-right { gap: 10px; font-size: 13px; }
             .header-right .badge { display: none; }
             nav { padding: 0 16px; overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; }
@@ -264,8 +266,9 @@
 </head>
 <body>
     <div class="header">
-        <h1><span class="brand-k">К</span>ОРУС СПР</h1>
+        <h1><span class="brand-name"><span class="brand-k">К</span>ОРУС</span> <span class="brand-sub">Крупные сделки</span></h1>
         <div class="header-right">
+            <a href="/guide" target="_blank" title="Инструкция" style="width:24px; height:24px; display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,0.15); border-radius:50%; color:#fff; font-size:13px; font-weight:700; text-decoration:none;">?</a>
             <span><%= user.name %></span>
             <span class="badge">Администратор</span>
             <a href="/logout">Выйти</a>
@@ -289,6 +292,7 @@
         <div class="card">
             <h2>Новый пользователь</h2>
             <form method="POST" action="/users">
+                                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                 <div class="form-row">
                     <div class="form-group">
                         <label>Имя</label>
@@ -347,6 +351,7 @@
                                 <div class="actions">
                                     <% if (u.id !== user.id) { %>
                                         <form method="POST" action="/users/<%= u.id %>/toggle">
+                                            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                                             <button class="btn btn-sm <%= u.is_active ? 'btn-warning' : 'btn-success' %>">
                                                 <%= u.is_active ? 'Отключить' : 'Включить' %>
                                             </button>
@@ -355,10 +360,12 @@
 
                                     <% if (!u.is_permanent_approver) { %>
                                         <form method="POST" action="/users/<%= u.id %>/approver/add">
+                                            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                                             <button class="btn btn-sm btn-outline">+ Согласующий</button>
                                         </form>
                                     <% } else { %>
                                         <form method="POST" action="/users/<%= u.id %>/approver/remove">
+                                            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                                             <button class="btn btn-sm btn-danger">- Согласующий</button>
                                         </form>
                                     <% } %>
@@ -367,6 +374,7 @@
                                 </div>
                                 <div class="pwd-form" id="pwd-<%= u.id %>">
                                     <form method="POST" action="/users/<%= u.id %>/password" style="display:flex; gap:4px;">
+                                        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                                         <input type="password" name="password" minlength="6" required placeholder="Новый пароль">
                                         <button class="btn btn-sm btn-primary">OK</button>
                                     </form>

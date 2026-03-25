@@ -1,5 +1,4 @@
--- Корус СПР: Схема базы данных
--- Система принятия решений по крупным сделкам
+-- КОРУС Согласование крупных сделок: Схема базы данных
 
 -- Пользователи
 CREATE TABLE users (
@@ -47,12 +46,13 @@ CREATE TABLE deal_participants (
     UNIQUE (deal_id, user_id, role)
 );
 
--- Документы сделки
+-- Документы сделки (файлы хранятся в БД как BYTEA)
 CREATE TABLE documents (
     id SERIAL PRIMARY KEY,
     deal_id INTEGER NOT NULL REFERENCES deals(id),
     filename VARCHAR(255) NOT NULL,
-    filepath VARCHAR(500) NOT NULL,
+    mimetype VARCHAR(255) DEFAULT 'application/octet-stream',
+    filedata BYTEA,
     filesize INTEGER,
     uploaded_by INTEGER REFERENCES users(id),
     uploaded_at TIMESTAMP DEFAULT NOW()

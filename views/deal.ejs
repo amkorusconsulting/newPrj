@@ -3,14 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Корус СПР — Сделка #<%= deal.id %></title>
+    <title>КОРУС Крупные сделки — Сделка #<%= deal.id %></title>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;900&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, sans-serif; background: #f2f2f2; min-height: 100vh; }
         .header { background: #121239; color: #fff; padding: 16px 32px; display: flex; justify-content: space-between; align-items: center; }
-        .header h1 { font-size: 18px; font-weight: 700; letter-spacing: 0.5px; }
+        .header h1 { font-size: 16px; font-weight: 700; letter-spacing: 0.3px; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
         .header h1 .brand-k { color: #F9423A; }
+        .header h1 .brand-sub { font-weight: 600; font-size: 14px; color: rgba(255,255,255,0.55); }
         .header-right { display: flex; align-items: center; gap: 16px; font-size: 14px; }
         .header-right a { color: rgba(255,255,255,0.6); text-decoration: none; }
         .header-right a:hover { color: #fff; }
@@ -64,7 +65,8 @@
         @media (max-width: 800px) {
             .grid { grid-template-columns: 1fr; }
             .header { padding: 12px 16px; }
-            .header h1 { font-size: 16px; }
+            .header h1 { font-size: 14px; }
+            .header h1 .brand-sub { font-size: 11px; }
             .header-right { gap: 10px; font-size: 13px; }
             nav { padding: 0 16px; overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; }
             nav a { padding: 10px 12px; font-size: 13px; }
@@ -85,8 +87,9 @@
 </head>
 <body>
     <div class="header">
-        <h1><span class="brand-k">К</span>ОРУС СПР</h1>
+        <h1><span class="brand-name"><span class="brand-k">К</span>ОРУС</span> <span class="brand-sub">Крупные сделки</span></h1>
         <div class="header-right">
+            <a href="/guide" target="_blank" title="Инструкция" style="width:24px; height:24px; display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,0.15); border-radius:50%; color:#fff; font-size:13px; font-weight:700; text-decoration:none;">?</a>
             <span><%= user.name %></span>
             <a href="/logout">Выйти</a>
         </div>
@@ -144,10 +147,6 @@
                         <div class="field-label">Инициатор</div>
                         <div class="field-value"><%= deal.initiator_name || '—' %> (<%= deal.initiator_email || '' %>)</div>
                     </div>
-                    <div class="field">
-                        <div class="field-label">Создал</div>
-                        <div class="field-value"><%= deal.created_by_name || '—' %> · <%= new Date(deal.created_at).toLocaleString('ru-RU') %></div>
-                    </div>
                 </div>
 
                 <!-- Голоса -->
@@ -180,7 +179,8 @@
                                         <td>
                                             <%= v.reservation || '—' %>
                                             <% if (String(v.user_id) === String(user.id) && deal.status === 'active') { %>
-                                                <form method="POST" action="/deals/<%= deal.id %>/reservation" style="margin-top:6px; display:flex; gap:4px;">
+                                                <form method="POST" action="/deals/<%= deal.id %>
+                                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">/reservation" style="margin-top:6px; display:flex; gap:4px;">
                                                     <input type="text" name="reservation" placeholder="Добавить/изменить оговорку" value="<%= v.reservation || '' %>" style="flex:1; padding:4px 8px; border:1px solid #ddd; border-radius:4px; font-size:12px;">
                                                     <button class="btn btn-sm btn-outline">Сохранить</button>
                                                 </form>
@@ -197,7 +197,8 @@
                     <% if (canVote) { %>
                         <div style="margin-top:16px; padding-top:16px; border-top:1px solid #eee;">
                             <h4 style="font-size:14px; margin-bottom:12px; color:#333;">Ваше решение</h4>
-                            <form method="POST" action="/deals/<%= deal.id %>/vote" id="voteForm">
+                            <form method="POST" action="/deals/<%= deal.id %>
+                                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">/vote" id="voteForm">
                                 <div style="display:flex; gap:8px; margin-bottom:12px;">
                                     <label style="display:flex; align-items:center; gap:4px; cursor:pointer;">
                                         <input type="radio" name="decision" value="approve" required> Согласовать
@@ -241,19 +242,9 @@
                     <div class="card">
                         <h3>Запуск согласования</h3>
                         <p style="font-size:13px; color:#666; margin-bottom:12px;">После запуска согласующие получат уведомления и смогут голосовать.</p>
-                        <form method="POST" action="/deals/<%= deal.id %>/start">
+                        <form method="POST" action="/deals/<%= deal.id %>
+                                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">/start">
                             <button class="btn btn-primary">Запустить согласование</button>
-                        </form>
-                    </div>
-                <% } %>
-
-                <% if (deal.status === 'active' && (myRole === 'initiator' || user.is_admin)) { %>
-                    <div class="card">
-                        <h3>Отзыв сделки</h3>
-                        <form method="POST" action="/deals/<%= deal.id %>/withdraw">
-                            <textarea name="comment" required placeholder="Причина отзыва (обязательно)" rows="2"
-                                      style="width:100%; padding:8px; border:1px solid #ddd; border-radius:6px; font-size:13px; font-family:inherit; margin-bottom:8px; resize:vertical;"></textarea>
-                            <button class="btn btn-danger">Отозвать сделку</button>
                         </form>
                     </div>
                 <% } %>
@@ -262,7 +253,8 @@
                     <div class="card">
                         <h3>Итоговое решение</h3>
                         <p style="font-size:13px; color:#666; margin-bottom:12px;">Проставить итоговый статус и закрыть сделку.</p>
-                        <form method="POST" action="/deals/<%= deal.id %>/close">
+                        <form method="POST" action="/deals/<%= deal.id %>
+                                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">/close">
                             <div style="display:flex; gap:8px; margin-bottom:12px;">
                                 <label style="display:flex; align-items:center; gap:4px; cursor:pointer;">
                                     <input type="radio" name="final_status" value="approved" required>
@@ -313,14 +305,15 @@
                         <div style="padding:12px 0; border-bottom:1px solid #f0f0f0;">
                             <div style="display:flex; justify-content:space-between; align-items:center;">
                                 <div>
-                                    <a href="/deals/<%= deal.id %>/documents/<%= doc.id %>/download" style="font-size:14px; color:#002FA7; text-decoration:none; font-weight:500;"><%= doc.filename %></a>
+                                    <a href="#" onclick="downloadDoc(<%= deal.id %>, <%= doc.id %>, this); return false;" style="font-size:14px; color:#002FA7; text-decoration:none; font-weight:500; cursor:pointer;"><%= doc.filename %></a>
                                     <span style="font-size:12px; color:#999; margin-left:8px;">
                                         <%= doc.filesize ? (doc.filesize < 1024*1024 ? (doc.filesize / 1024).toFixed(0) + ' КБ' : (doc.filesize / 1024 / 1024).toFixed(1) + ' МБ') : '' %>
                                         · <%= new Date(doc.uploaded_at).toLocaleString('ru-RU') %>
                                     </span>
                                 </div>
                                 <% if (canUpload) { %>
-                                    <form method="POST" action="/deals/<%= deal.id %>/documents/<%= doc.id %>/delete" style="display:inline"
+                                    <form method="POST" action="/deals/<%= deal.id %>
+                                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">/documents/<%= doc.id %>/delete" style="display:inline"
                                           onsubmit="return confirm('Удалить документ?')">
                                         <button class="btn btn-sm btn-danger">×</button>
                                     </form>
@@ -340,7 +333,8 @@
                             <% } %>
 
                             <% if (canComment) { %>
-                                <form method="POST" action="/deals/<%= deal.id %>/documents/<%= doc.id %>/comments" style="display:flex; gap:6px; margin-top:6px; margin-left:16px;">
+                                <form method="POST" action="/deals/<%= deal.id %>
+                                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">/documents/<%= doc.id %>/comments" style="display:flex; gap:6px; margin-top:6px; margin-left:16px;">
                                     <input type="text" name="text" placeholder="Комментарий..." required
                                            style="flex:1; padding:5px 10px; border:1px solid #ddd; border-radius:4px; font-size:12px;">
                                     <button class="btn btn-sm btn-outline">Отправить</button>
@@ -352,7 +346,8 @@
                     <% if (canUpload) { %>
                         <div id="dropZone" style="margin-top:16px; padding:32px 16px; border:2px dashed #ccc; border-radius:8px; text-align:center; cursor:pointer; transition: all 0.2s;">
                             <p id="dropText" style="font-size:14px; color:#888; margin:0;">Перетащите файлы сюда</p>
-                            <p style="font-size:11px; color:#aaa; margin-top:4px;">или нажмите для выбора · макс. 50 МБ на файл</p>
+                            <p style="font-size:12px; color:#999; margin-top:6px;">или нажмите для выбора</p>
+                            <p style="font-size:11px; color:#F9423A; margin-top:4px;">Максимальный размер файла: 50 МБ</p>
                             <input type="file" id="fileInput" multiple style="display:none;">
                         </div>
                         <script>
@@ -386,8 +381,16 @@
                             });
 
                             function sendFiles(files) {
+                                var MAX_SIZE = 50 * 1024 * 1024;
                                 var fd = new FormData();
-                                for (var i = 0; i < files.length; i++) fd.append('files', files[i]);
+                                for (var i = 0; i < files.length; i++) {
+                                    if (files[i].size > MAX_SIZE) {
+                                        text.textContent = 'Файл «' + files[i].name + '» превышает 50 МБ';
+                                        text.style.color = '#c33';
+                                        return;
+                                    }
+                                    fd.append('files', files[i]);
+                                }
 
                                 text.textContent = 'Загрузка...';
                                 zone.style.borderColor = '#002FA7';
@@ -395,6 +398,7 @@
 
                                 var xhr = new XMLHttpRequest();
                                 xhr.open('POST', '/deals/<%= deal.id %>/documents');
+                                xhr.setRequestHeader('X-CSRF-Token', '<%= csrfToken %>');
 
                                 xhr.upload.onprogress = function(e) {
                                     if (e.lengthComputable) {
@@ -445,11 +449,19 @@
                                             </span>
                                         </div>
                                     </td>
-                                    <td>
+                                    <td style="white-space:nowrap;">
                                         <% if (user.is_admin && !['closed','approved','rejected','withdrawn'].includes(deal.status)) { %>
-                                            <form method="POST" action="/deals/<%= deal.id %>/participants/<%= p.id %>/remove" style="display:inline"
+                                            <form method="POST" action="/deals/<%= deal.id %>
+                                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">/participants/<%= p.id %>/remove" style="display:inline"
                                                   <% if (p.role === 'initiator') { %>onsubmit="return confirm('Удалить инициатора? Не забудьте назначить нового.')"<% } %>>
-                                                <button class="btn btn-sm btn-danger">×</button>
+                                                <button class="btn btn-sm btn-outline" title="Исключить из участников">×</button>
+                                            </form>
+                                        <% } %>
+                                        <% if (user.is_admin && deal.status === 'active' && p.role !== 'initiator') { %>
+                                            <form method="POST" action="/deals/<%= deal.id %>
+                                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">/participants/<%= p.user_id %>/resend" style="display:inline"
+                                                  onsubmit="this.querySelector('button').disabled=true;">
+                                                <button class="btn btn-sm btn-danger" title="Повторно отправить письмо">✉</button>
                                             </form>
                                         <% } %>
                                     </td>
@@ -460,7 +472,8 @@
 
                     <% if (user.is_admin && !['closed','approved','rejected','withdrawn'].includes(deal.status)) { %>
                         <% const existingIds = participants.map(p => p.user_id); %>
-                        <form method="POST" action="/deals/<%= deal.id %>/participants" class="add-form">
+                        <form method="POST" action="/deals/<%= deal.id %>
+                                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">/participants" class="add-form">
                             <select name="user_id" required>
                                 <option value="">Пользователь...</option>
                                 <% allUsers.forEach(u => { %>
@@ -478,9 +491,35 @@
                         </form>
                     <% } %>
                 </div>
+
+                <% if (deal.status === 'active' && (myRole === 'initiator' || user.is_admin)) { %>
+                    <div class="card">
+                        <h3>Отзыв сделки</h3>
+                        <form method="POST" action="/deals/<%= deal.id %>
+                                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">/withdraw">
+                            <textarea name="comment" required placeholder="Причина отзыва (обязательно)" rows="2"
+                                      style="width:100%; padding:8px; border:1px solid #ddd; border-radius:6px; font-size:13px; font-family:inherit; margin-bottom:8px; resize:vertical;"></textarea>
+                            <button class="btn btn-danger">Отозвать сделку</button>
+                        </form>
+                    </div>
+                <% } %>
             </div>
         </div>
     </div>
+    <script>
+    function downloadDoc(dealId, docId, link) {
+        fetch('/deals/' + dealId + '/documents/' + docId + '/token')
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.token) {
+                    window.location.href = '/deals/' + dealId + '/documents/' + docId + '/download?t=' + encodeURIComponent(data.token);
+                } else {
+                    alert(data.error || 'Не удалось получить доступ к файлу');
+                }
+            })
+            .catch(function() { alert('Ошибка сети'); });
+    }
+    </script>
     <!-- AI Chat Widget -->
     <style>
         .chat-toggle {

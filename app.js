@@ -34,13 +34,27 @@ app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 app.use(express.json({ limit: '1mb' }));
 app.use(cookieParser());
 
+const { generateCsrf, verifyCsrf } = require('./middleware/auth');
+app.use(generateCsrf);
+app.use(verifyCsrf);
+
 app.get('/', (req, res) => {
-    res.render('login', { error: null });
+    res.render('login', { error: null, redirect: req.query.redirect || '' });
 });
 
 app.get('/robots.txt', (req, res) => {
     res.type('text/plain');
     res.send('User-agent: *\nDisallow: /');
+});
+
+// Инструкция пользователя (только для авторизованных)
+const { authRequired } = require('./middleware/auth');
+const fs = require('fs');
+app.get('/guide', authRequired, (req, res) => {
+    const guidePath = path.join(__dirname, 'docs-myPrj', 'korus-spr-user-guide-branded.html');
+    if (!fs.existsSync(guidePath)) return res.status(404).send('Инструкция не найдена');
+    res.set('Cache-Control', 'no-store');
+    res.type('html').send(fs.readFileSync(guidePath, 'utf8'));
 });
 
 app.use(authRoutes);

@@ -1,6 +1,8 @@
 const express = require('express');
+const crypto = require('crypto');
 const pool = require('../db');
 const { authRequired, adminRequired } = require('../middleware/auth');
+const { notifyApprovalStarted, notifyDealClosed, notifyDealWithdrawn } = require('../services/mailer');
 
 const router = express.Router();
 
@@ -319,6 +321,62 @@ router.post('/deals/:id/participants/:pid/remove', authRequired, adminRequired, 
     }
 });
 
+// Повторная отправка письма участнику
+router.post('/deals/:id/participants/:userId/resend', authRequired, adminRequired, async (req, res) => {
+    const { id, userId } = req.params;
+
+    try {
+        const dealResult = await pool.query(
+            `SELECT d.*, u.name AS initiator_name FROM deals d
+             LEFT JOIN users u ON d.initiator_id = u.id WHERE d.id = $1`,
+            [id]
+        );
+        if (dealResult.rows.length === 0) return res.status(404).send('Сделка не найдена');
+        const deal = dealResult.rows[0];
+        if (deal.status !== 'active') return res.redirect(`/deals/${id}`);
+
+        const userResult = await pool.query(
+            'SELECT u.id AS user_id, u.email, u.name FROM users u WHERE u.id = $1',
+            [userId]
+        );
+        if (userResult.rows.length === 0) return res.status(404).send('Пользователь не найден');
+        const recipient = userResult.rows[0];
+
+        // Проверяем роль — не отправляем инициатору
+        const partResult = await pool.query(
+            'SELECT role FROM deal_participants WHERE deal_id = $1 AND user_id = $2',
+            [id, userId]
+        );
+        if (partResult.rows.length === 0 || partResult.rows[0].role === 'initiator') {
+            return res.redirect(`/deals/${id}`);
+        }
+
+        const role = partResult.rows[0].role;
+        const isApprover = ['approver', 'invited_approver'].includes(role);
+
+        // Для согласующих — генерируем новую magic-ссылку
+        if (isApprover) {
+            const token = crypto.randomBytes(32).toString('hex');
+            const defaultExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+            const expiresAt = deal.deadline && new Date(deal.deadline) < defaultExpiry
+                ? new Date(deal.deadline)
+                : defaultExpiry;
+            await pool.query(
+                'INSERT INTO magic_links (deal_id, user_id, token, expires_at) VALUES ($1, $2, $3, $4)',
+                [id, userId, token, expiresAt]
+            );
+            recipient.magic_token = token;
+        }
+
+        notifyApprovalStarted(deal, [recipient]);
+
+        res.redirect(`/deals/${id}`);
+    } catch (err) {
+        console.error('Resend email error:', err);
+        res.status(500).send('Ошибка сервера');
+    }
+});
+
 // Голосование
 router.post('/deals/:id/vote', authRequired, async (req, res) => {
     const { id } = req.params;
@@ -376,11 +434,38 @@ router.post('/deals/:id/vote', authRequired, async (req, res) => {
         );
 
         if (Number(totalVotes.rows[0].count) >= Number(totalApprovers.rows[0].count)) {
-            // Все проголосовали — уведомляем админа (пока просто пишем в аудит)
             await pool.query(
                 'INSERT INTO audit_log (deal_id, action, details) VALUES ($1, $2, $3)',
                 [id, 'all_voted', JSON.stringify({ total: Number(totalVotes.rows[0].count) })]
             );
+
+            // Если все проголосовали «approve» — автоматически закрываем сделку
+            const rejectCount = await pool.query(
+                "SELECT COUNT(*) FROM votes WHERE deal_id = $1 AND decision = 'reject'",
+                [id]
+            );
+            if (Number(rejectCount.rows[0].count) === 0) {
+                await pool.query(
+                    "UPDATE deals SET status = 'approved', close_comment = 'Автоматическое согласование: все участники проголосовали «за»', closed_at = NOW() WHERE id = $1",
+                    [id]
+                );
+                await pool.query(
+                    'INSERT INTO audit_log (deal_id, action, details) VALUES ($1, $2, $3)',
+                    [id, 'deal_auto_approved', JSON.stringify({ total_approvals: Number(totalVotes.rows[0].count) })]
+                );
+
+                // Email всем участникам
+                const dealFull = await pool.query(
+                    `SELECT d.*, u.name AS initiator_name FROM deals d
+                     LEFT JOIN users u ON d.initiator_id = u.id WHERE d.id = $1`, [id]
+                );
+                const allParticipants = await pool.query(
+                    `SELECT u.email, u.name FROM deal_participants dp
+                     JOIN users u ON dp.user_id = u.id WHERE dp.deal_id = $1`, [id]
+                );
+                notifyDealClosed(dealFull.rows[0], allParticipants.rows, 'Согласовано',
+                    'Автоматическое согласование: все участники проголосовали «за»');
+            }
         }
 
         res.redirect(`/deals/${id}`);
@@ -438,7 +523,31 @@ router.post('/deals/:id/start', authRequired, async (req, res) => {
             [req.user.id, id, 'deal_started']
         );
 
-        // TODO: отправка email согласующим
+        // Email согласующим с magic-ссылками
+        const approversResult = await pool.query(
+            `SELECT u.id AS user_id, u.email, u.name FROM deal_participants dp
+             JOIN users u ON dp.user_id = u.id
+             WHERE dp.deal_id = $1 AND dp.role IN ('approver', 'invited_approver')`,
+            [id]
+        );
+        const initiatorResult = await pool.query('SELECT name FROM users WHERE id = $1', [deal.initiator_id]);
+        deal.initiator_name = initiatorResult.rows[0]?.name || null;
+
+        // Генерируем magic links для каждого согласующего
+        const approversWithLinks = [];
+        for (const approver of approversResult.rows) {
+            const token = crypto.randomBytes(32).toString('hex');
+            const defaultExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+            const expiresAt = deal.deadline && new Date(deal.deadline) < defaultExpiry
+                ? new Date(deal.deadline)
+                : defaultExpiry;
+            await pool.query(
+                'INSERT INTO magic_links (deal_id, user_id, token, expires_at) VALUES ($1, $2, $3, $4)',
+                [id, approver.user_id, token, expiresAt]
+            );
+            approversWithLinks.push({ ...approver, magic_token: token });
+        }
+        notifyApprovalStarted(deal, approversWithLinks);
 
         res.redirect(`/deals/${id}`);
     } catch (err) {
@@ -479,6 +588,15 @@ router.post('/deals/:id/withdraw', authRequired, async (req, res) => {
             [req.user.id, id, 'deal_withdrawn', JSON.stringify({ comment })]
         );
 
+        // Email всем участникам
+        const initiatorResult = await pool.query('SELECT name FROM users WHERE id = $1', [deal.initiator_id]);
+        deal.initiator_name = initiatorResult.rows[0]?.name || null;
+        const participants = await pool.query(
+            `SELECT u.email, u.name FROM deal_participants dp
+             JOIN users u ON dp.user_id = u.id WHERE dp.deal_id = $1`, [id]
+        );
+        notifyDealWithdrawn(deal, participants.rows, comment);
+
         res.redirect(`/deals/${id}`);
     } catch (err) {
         console.error('Withdraw error:', err);
@@ -496,6 +614,12 @@ router.post('/deals/:id/close', authRequired, adminRequired, async (req, res) =>
             return res.status(400).send('Некорректный статус');
         }
 
+        const dealCheck = await pool.query('SELECT status FROM deals WHERE id = $1', [id]);
+        if (dealCheck.rows.length === 0) return res.status(404).send('Сделка не найдена');
+        if (['closed', 'approved', 'rejected', 'withdrawn'].includes(dealCheck.rows[0].status)) {
+            return res.redirect(`/deals/${id}`);
+        }
+
         await pool.query(
             'UPDATE deals SET status = $1, close_comment = $2, closed_at = NOW() WHERE id = $3',
             [final_status, comment || null, id]
@@ -506,11 +630,127 @@ router.post('/deals/:id/close', authRequired, adminRequired, async (req, res) =>
             [req.user.id, id, 'deal_closed', JSON.stringify({ final_status, comment })]
         );
 
-        // TODO: email-рассылка итогового статуса
+        // Email всем участникам
+        const dealFull = await pool.query(
+            `SELECT d.*, u.name AS initiator_name FROM deals d
+             LEFT JOIN users u ON d.initiator_id = u.id WHERE d.id = $1`, [id]
+        );
+        const participants = await pool.query(
+            `SELECT u.email, u.name FROM deal_participants dp
+             JOIN users u ON dp.user_id = u.id WHERE dp.deal_id = $1`, [id]
+        );
+        const statusText = final_status === 'approved' ? 'Согласовано' : 'Не согласовано';
+        notifyDealClosed(dealFull.rows[0], participants.rows, statusText, comment);
 
         res.redirect(`/deals/${id}`);
     } catch (err) {
         console.error('Close deal error:', err);
+        res.status(500).send('Ошибка сервера');
+    }
+});
+
+// Голосование по magic-ссылке из email (approve без логина)
+router.get('/vote/:token', async (req, res) => {
+    const { token } = req.params;
+
+    try {
+        const linkResult = await pool.query(
+            'SELECT * FROM magic_links WHERE token = $1',
+            [token]
+        );
+
+        if (linkResult.rows.length === 0) {
+            return res.status(404).send('Ссылка не найдена');
+        }
+
+        const link = linkResult.rows[0];
+
+        if (link.used) {
+            return res.redirect(`/deals/${link.deal_id}`);
+        }
+
+        if (new Date(link.expires_at) < new Date()) {
+            return res.status(410).send('Ссылка истекла. Войдите в систему для голосования.');
+        }
+
+        // Проверяем: сделка active?
+        const dealResult = await pool.query('SELECT status FROM deals WHERE id = $1', [link.deal_id]);
+        if (dealResult.rows.length === 0 || dealResult.rows[0].status !== 'active') {
+            return res.redirect(`/deals/${link.deal_id}`);
+        }
+
+        // Проверяем: ещё не голосовал?
+        const existingVote = await pool.query(
+            'SELECT 1 FROM votes WHERE deal_id = $1 AND user_id = $2',
+            [link.deal_id, link.user_id]
+        );
+        if (existingVote.rows.length > 0) {
+            await pool.query('UPDATE magic_links SET used = TRUE WHERE id = $1', [link.id]);
+            return res.redirect(`/deals/${link.deal_id}`);
+        }
+
+        // Голосуем approve
+        await pool.query(
+            'INSERT INTO votes (deal_id, user_id, decision, comment) VALUES ($1, $2, $3, $4)',
+            [link.deal_id, link.user_id, 'approve', 'Согласовано по ссылке из email']
+        );
+
+        // Отмечаем ссылку как использованную
+        await pool.query('UPDATE magic_links SET used = TRUE WHERE id = $1', [link.id]);
+
+        // Аудит
+        await pool.query(
+            'INSERT INTO audit_log (user_id, deal_id, action, details) VALUES ($1, $2, $3, $4)',
+            [link.user_id, link.deal_id, 'voted', JSON.stringify({ decision: 'approve', via: 'magic_link' })]
+        );
+
+        // Проверяем: все ли проголосовали? → авто-approve
+        const totalApprovers = await pool.query(
+            "SELECT COUNT(*) FROM deal_participants WHERE deal_id = $1 AND role IN ('approver', 'invited_approver')",
+            [link.deal_id]
+        );
+        const totalVotes = await pool.query(
+            'SELECT COUNT(*) FROM votes WHERE deal_id = $1',
+            [link.deal_id]
+        );
+
+        if (Number(totalVotes.rows[0].count) >= Number(totalApprovers.rows[0].count)) {
+            await pool.query(
+                'INSERT INTO audit_log (deal_id, action, details) VALUES ($1, $2, $3)',
+                [link.deal_id, 'all_voted', JSON.stringify({ total: Number(totalVotes.rows[0].count) })]
+            );
+
+            const rejectCount = await pool.query(
+                "SELECT COUNT(*) FROM votes WHERE deal_id = $1 AND decision = 'reject'",
+                [link.deal_id]
+            );
+            if (Number(rejectCount.rows[0].count) === 0) {
+                await pool.query(
+                    "UPDATE deals SET status = 'approved', close_comment = 'Автоматическое согласование: все участники проголосовали «за»', closed_at = NOW() WHERE id = $1",
+                    [link.deal_id]
+                );
+                await pool.query(
+                    'INSERT INTO audit_log (deal_id, action, details) VALUES ($1, $2, $3)',
+                    [link.deal_id, 'deal_auto_approved', JSON.stringify({ total_approvals: Number(totalVotes.rows[0].count) })]
+                );
+
+                // Email всем участникам
+                const dealFull = await pool.query(
+                    `SELECT d.*, u.name AS initiator_name FROM deals d
+                     LEFT JOIN users u ON d.initiator_id = u.id WHERE d.id = $1`, [link.deal_id]
+                );
+                const allParticipants = await pool.query(
+                    `SELECT u.email, u.name FROM deal_participants dp
+                     JOIN users u ON dp.user_id = u.id WHERE dp.deal_id = $1`, [link.deal_id]
+                );
+                notifyDealClosed(dealFull.rows[0], allParticipants.rows, 'Согласовано',
+                    'Автоматическое согласование: все участники проголосовали «за»');
+            }
+        }
+
+        res.redirect(`/deals/${link.deal_id}`);
+    } catch (err) {
+        console.error('Magic link vote error:', err);
         res.status(500).send('Ошибка сервера');
     }
 });

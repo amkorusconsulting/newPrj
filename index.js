@@ -3,5 +3,5 @@ const app = require('./app');
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Корус СПР запущен: http://0.0.0.0:${PORT}`);
+    console.log(`КОРУС Крупные сделки запущен: http://0.0.0.0:${PORT}`);
 });
