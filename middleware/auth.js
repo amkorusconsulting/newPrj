@@ -54,6 +54,7 @@ function generateCsrf(req, res, next) {
 function verifyCsrf(req, res, next) {
     if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next();
     if (process.env.NODE_ENV === 'test') return next();
+    if (req.path === '/login') return next();
 
     const token = req.cookies && req.cookies.token;
     if (!token) return next(); // authRequired обработает отсутствие сессии
