@@ -1,67 +1,26 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>КОРУС Крупные сделки — Комментарии к сделке #<%= deal.id %></title>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+    <%- include('partials/head') %>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, sans-serif; background: #f2f2f2; min-height: 100vh; }
-        .header { background: #121239; color: #fff; padding: 16px 32px; display: flex; justify-content: space-between; align-items: center; }
-        .header h1 { font-size: 16px; font-weight: 700; letter-spacing: 0.3px; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
-        .header h1 .brand-k { color: #F9423A; }
-        .header h1 .brand-sub { font-weight: 600; font-size: 14px; color: rgba(255,255,255,0.55); }
-        .header-right { display: flex; align-items: center; gap: 16px; font-size: 14px; }
-        .header-right a { color: rgba(255,255,255,0.6); text-decoration: none; }
-        .header-right a:hover { color: #fff; }
-        nav { background: #fff; border-bottom: 1px solid #e0e0e0; padding: 0 32px; }
-        nav a { display: inline-block; padding: 12px 16px; text-decoration: none; color: #666; font-size: 14px; font-weight: 500; border-bottom: 2px solid transparent; }
-        nav a:hover { color: #121239; }
-        nav a.active { color: #121239; border-bottom-color: #F9423A; }
-        .container { max-width: 900px; margin: 32px auto; padding: 0 24px; }
         .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
         .page-header h2 { font-size: 18px; color: #333; }
-        .btn { padding: 8px 18px; border: none; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; text-decoration: none; display: inline-block; }
-        .btn-outline { background: #fff; color: #666; border: 1px solid #ddd; }
-        .btn-outline:hover { background: #f5f5f5; }
         .comment-item { background: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); padding: 16px 20px; margin-bottom: 12px; }
         .comment-meta { font-size: 12px; color: #888; margin-bottom: 6px; }
         .comment-meta strong { color: #333; }
         .comment-doc { display: inline-block; background: #e0e7ff; color: #002FA7; padding: 1px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
         .comment-text { font-size: 14px; color: #333; line-height: 1.5; }
         .empty { text-align: center; padding: 48px; color: #999; font-size: 15px; }
-
-        /* === Mobile === */
         @media (max-width: 768px) {
-            .header { padding: 12px 16px; }
-            .header h1 { font-size: 14px; }
-            .header h1 .brand-sub { font-size: 11px; }
-            .header-right { gap: 10px; font-size: 13px; }
-            nav { padding: 0 16px; overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; }
-            nav a { padding: 10px 12px; font-size: 13px; }
-            .container { margin: 16px auto; padding: 0 12px; }
             .page-header { flex-direction: column; align-items: flex-start; gap: 8px; }
             .comment-item { padding: 12px 14px; }
         }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1><span class="brand-name"><span class="brand-k">К</span>ОРУС</span> <span class="brand-sub">Крупные сделки</span></h1>
-        <div class="header-right">
-            <a href="/guide" target="_blank" title="Инструкция" style="width:24px; height:24px; display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,0.15); border-radius:50%; color:#fff; font-size:13px; font-weight:700; text-decoration:none;">?</a>
-            <span><%= user.name %></span>
-            <a href="/logout">Выйти</a>
-        </div>
-    </div>
-
-    <nav>
-        <a href="/dashboard">Сделки</a>
-        <% if (user.is_admin) { %>
-            <a href="/users">Пользователи</a>
-        <% } %>
-    </nav>
+    <%- include('partials/header') %>
+    <%- include('partials/nav', { activePage: 'deals' }) %>
 
     <div class="container">
         <div class="page-header">

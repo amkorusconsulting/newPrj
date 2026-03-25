@@ -1,0 +1,11 @@
+<div class="header">
+    <h1><span class="brand-name"><span class="brand-k">К</span>ОРУС</span> <span class="brand-sub">Крупные сделки</span></h1>
+    <div class="header-right">
+        <a href="/guide" target="_blank" title="Инструкция" style="width:24px; height:24px; display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,0.15); border-radius:50%; color:#fff; font-size:13px; font-weight:700; text-decoration:none;">?</a>
+        <span><%= user.name %></span>
+        <% if (user.is_admin) { %>
+            <span class="badge">Администратор</span>
+        <% } %>
+        <a href="/logout">Выйти</a>
+    </div>
+</div>

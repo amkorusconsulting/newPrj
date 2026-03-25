@@ -1,0 +1,7 @@
+<nav>
+    <a href="/dashboard" <% if (typeof activePage !== 'undefined' && activePage === 'deals') { %>class="active"<% } %>>Сделки</a>
+    <% if (user.is_admin) { %>
+        <a href="/users" <% if (typeof activePage !== 'undefined' && activePage === 'users') { %>class="active"<% } %>>Пользователи</a>
+        <a href="/audit" <% if (typeof activePage !== 'undefined' && activePage === 'audit') { %>class="active"<% } %>>Журнал</a>
+    <% } %>
+</nav>

@@ -16,10 +16,12 @@ function checkLoginRate(ip) {
     if (attempts.length >= MAX_ATTEMPTS) return false;
     attempts.push(now);
     loginAttempts.set(ip, attempts);
+    enforceMapLimit();
     return true;
 }
 
-// Очистка старых записей каждые 15 минут
+// Очистка старых записей каждые 15 минут + лимит на размер Map
+const MAX_IPS = 10000;
 setInterval(() => {
     const now = Date.now();
     for (const [ip, attempts] of loginAttempts) {
@@ -28,6 +30,14 @@ setInterval(() => {
         else loginAttempts.set(ip, recent);
     }
 }, WINDOW_MS);
+
+function enforceMapLimit() {
+    if (loginAttempts.size <= MAX_IPS) return;
+    const iter = loginAttempts.keys();
+    while (loginAttempts.size > MAX_IPS * 0.8) {
+        loginAttempts.delete(iter.next().value);
+    }
+}
 
 router.post('/login', async (req, res) => {
     const { email, password } = req.body;

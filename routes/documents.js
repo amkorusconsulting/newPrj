@@ -2,7 +2,7 @@ const express = require('express');
 const multer = require('multer');
 const crypto = require('crypto');
 const pool = require('../db');
-const { authRequired, adminRequired } = require('../middleware/auth');
+const { authRequired, adminRequired, checkDealAccess } = require('../middleware/auth');
 const { notifyDocumentUploaded } = require('../services/mailer');
 
 const router = express.Router();
@@ -52,21 +52,10 @@ function verifyDownloadToken(token, userId, dealId, docId) {
 }
 
 // Генерация токена для скачивания (AJAX)
-router.get('/deals/:id/documents/:docId/token', authRequired, async (req, res) => {
+router.get('/deals/:id/documents/:docId/token', authRequired, checkDealAccess, async (req, res) => {
     const { id, docId } = req.params;
 
     try {
-        // Проверка доступа
-        if (!req.user.is_admin) {
-            const access = await pool.query(
-                'SELECT 1 FROM deal_participants WHERE deal_id = $1 AND user_id = $2',
-                [id, req.user.id]
-            );
-            if (access.rows.length === 0) {
-                return res.status(403).json({ error: 'Доступ запрещён' });
-            }
-        }
-
         const doc = await pool.query('SELECT id FROM documents WHERE id = $1 AND deal_id = $2', [docId, id]);
         if (doc.rows.length === 0) return res.status(404).json({ error: 'Документ не найден' });
 
@@ -156,27 +145,15 @@ router.post('/deals/:id/documents', authRequired, handleUpload, async (req, res)
 });
 
 // Скачивание документа (подписанный токен + участник сделки или админ)
-router.get('/deals/:id/documents/:docId/download', authRequired, async (req, res) => {
+router.get('/deals/:id/documents/:docId/download', authRequired, checkDealAccess, async (req, res) => {
     const { id, docId } = req.params;
     const { t } = req.query;
 
-    // Проверяем подписанный токен
     if (!verifyDownloadToken(t, req.user.id, id, docId)) {
         return res.status(403).send('Ссылка недействительна или истекла. Вернитесь на страницу сделки.');
     }
 
     try {
-        // Проверка доступа
-        if (!req.user.is_admin) {
-            const access = await pool.query(
-                'SELECT 1 FROM deal_participants WHERE deal_id = $1 AND user_id = $2',
-                [id, req.user.id]
-            );
-            if (access.rows.length === 0) {
-                return res.status(403).send('Доступ запрещён');
-            }
-        }
-
         const doc = await pool.query(
             'SELECT * FROM documents WHERE id = $1 AND deal_id = $2',
             [docId, id]

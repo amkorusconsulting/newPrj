@@ -112,3 +112,6 @@ CREATE INDEX idx_comments_deal ON comments(deal_id);
 CREATE INDEX idx_audit_log_deal ON audit_log(deal_id);
 CREATE INDEX idx_audit_log_user ON audit_log(user_id);
 CREATE INDEX idx_magic_links_token ON magic_links(token);
+CREATE INDEX idx_deals_initiator ON deals(initiator_id);
+CREATE INDEX idx_deals_status ON deals(status);
+CREATE INDEX idx_audit_log_created ON audit_log(created_at DESC);

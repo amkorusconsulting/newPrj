@@ -1,7 +1,7 @@
 const express = require('express');
 const crypto = require('crypto');
 const pool = require('../db');
-const { authRequired, adminRequired } = require('../middleware/auth');
+const { authRequired, adminRequired, checkDealAccess } = require('../middleware/auth');
 const { notifyApprovalStarted, notifyDealClosed, notifyDealWithdrawn } = require('../services/mailer');
 
 const router = express.Router();
@@ -80,98 +80,61 @@ router.post('/deals', authRequired, adminRequired, async (req, res) => {
 });
 
 // Карточка сделки
-router.get('/deals/:id', authRequired, async (req, res) => {
+router.get('/deals/:id', authRequired, checkDealAccess, async (req, res) => {
     const { id } = req.params;
     try {
-        // Проверка доступа
-        if (!req.user.is_admin) {
-            const access = await pool.query(
-                'SELECT 1 FROM deal_participants WHERE deal_id = $1 AND user_id = $2',
-                [id, req.user.id]
-            );
-            if (access.rows.length === 0) {
-                return res.status(403).send('Доступ запрещён');
-            }
-        }
-
-        const dealResult = await pool.query(
-            `SELECT d.*, u.name AS initiator_name, u.email AS initiator_email,
-                    c.name AS created_by_name
-             FROM deals d
-             LEFT JOIN users u ON d.initiator_id = u.id
-             LEFT JOIN users c ON d.created_by = c.id
-             WHERE d.id = $1`,
-            [id]
-        );
+        const [dealResult, participantsResult, docsResult, commentsResult, votesResult, myRoleResult, allUsersResult] = await Promise.all([
+            pool.query(
+                `SELECT d.*, u.name AS initiator_name, u.email AS initiator_email,
+                        c.name AS created_by_name
+                 FROM deals d
+                 LEFT JOIN users u ON d.initiator_id = u.id
+                 LEFT JOIN users c ON d.created_by = c.id
+                 WHERE d.id = $1`, [id]
+            ),
+            pool.query(
+                `SELECT dp.*, u.name, u.email
+                 FROM deal_participants dp
+                 JOIN users u ON dp.user_id = u.id
+                 WHERE dp.deal_id = $1
+                 ORDER BY dp.role, u.name`, [id]
+            ),
+            pool.query('SELECT * FROM documents WHERE deal_id = $1 ORDER BY uploaded_at DESC', [id]),
+            pool.query(
+                `SELECT c.*, u.name AS author_name
+                 FROM comments c
+                 JOIN users u ON c.user_id = u.id
+                 WHERE c.deal_id = $1
+                 ORDER BY c.created_at ASC`, [id]
+            ),
+            pool.query(
+                `SELECT v.*, u.name, u.email
+                 FROM votes v
+                 JOIN users u ON v.user_id = u.id
+                 WHERE v.deal_id = $1
+                 ORDER BY v.voted_at DESC`, [id]
+            ),
+            pool.query('SELECT role FROM deal_participants WHERE deal_id = $1 AND user_id = $2', [id, req.user.id]),
+            pool.query('SELECT id, name, email FROM users WHERE is_active = TRUE ORDER BY name'),
+        ]);
 
         if (dealResult.rows.length === 0) {
             return res.status(404).send('Сделка не найдена');
         }
 
-        const deal = dealResult.rows[0];
-
-        // Участники
-        const participantsResult = await pool.query(
-            `SELECT dp.*, u.name, u.email
-             FROM deal_participants dp
-             JOIN users u ON dp.user_id = u.id
-             WHERE dp.deal_id = $1
-             ORDER BY dp.role, u.name`,
-            [id]
-        );
-
-        // Документы
-        const docsResult = await pool.query(
-            'SELECT * FROM documents WHERE deal_id = $1 ORDER BY uploaded_at DESC',
-            [id]
-        );
-
-        // Комментарии к документам
-        const commentsResult = await pool.query(
-            `SELECT c.*, u.name AS author_name
-             FROM comments c
-             JOIN users u ON c.user_id = u.id
-             WHERE c.deal_id = $1
-             ORDER BY c.created_at ASC`,
-            [id]
-        );
-
-        // Группируем комментарии по document_id
         const commentsByDoc = {};
         commentsResult.rows.forEach(c => {
             if (!commentsByDoc[c.document_id]) commentsByDoc[c.document_id] = [];
             commentsByDoc[c.document_id].push(c);
         });
 
-        // Голоса
-        const votesResult = await pool.query(
-            `SELECT v.*, u.name, u.email
-             FROM votes v
-             JOIN users u ON v.user_id = u.id
-             WHERE v.deal_id = $1
-             ORDER BY v.voted_at DESC`,
-            [id]
-        );
-
-        // Моя роль
-        const myRoleResult = await pool.query(
-            'SELECT role FROM deal_participants WHERE deal_id = $1 AND user_id = $2',
-            [id, req.user.id]
-        );
-        const myRole = myRoleResult.rows[0]?.role || (req.user.is_admin ? 'admin' : null);
-
-        // Все активные пользователи (для добавления участников)
-        const allUsersResult = await pool.query(
-            'SELECT id, name, email FROM users WHERE is_active = TRUE ORDER BY name'
-        );
-
         res.render('deal', {
             user: req.user,
-            deal,
+            deal: dealResult.rows[0],
             participants: participantsResult.rows,
             documents: docsResult.rows,
             votes: votesResult.rows,
-            myRole,
+            myRole: myRoleResult.rows[0]?.role || (req.user.is_admin ? 'admin' : null),
             allUsers: allUsersResult.rows,
             commentsByDoc,
         });
@@ -377,101 +340,96 @@ router.post('/deals/:id/participants/:userId/resend', authRequired, adminRequire
     }
 });
 
+// Общая логика: проверка авто-согласования внутри транзакции
+async function checkAutoApproval(client, dealId) {
+    const counts = await client.query(
+        `SELECT
+            (SELECT COUNT(*) FROM deal_participants WHERE deal_id = $1 AND role IN ('approver', 'invited_approver')) AS approvers,
+            (SELECT COUNT(*) FROM votes WHERE deal_id = $1) AS votes,
+            (SELECT COUNT(*) FROM votes WHERE deal_id = $1 AND decision = 'reject') AS rejects`,
+        [dealId]
+    );
+    const { approvers, votes, rejects } = counts.rows[0];
+    if (Number(votes) < Number(approvers)) return;
+
+    await client.query(
+        'INSERT INTO audit_log (deal_id, action, details) VALUES ($1, $2, $3)',
+        [dealId, 'all_voted', JSON.stringify({ total: Number(votes) })]
+    );
+
+    if (Number(rejects) === 0) {
+        await client.query(
+            "UPDATE deals SET status = 'approved', close_comment = 'Автоматическое согласование: все участники проголосовали «за»', closed_at = NOW() WHERE id = $1",
+            [dealId]
+        );
+        await client.query(
+            'INSERT INTO audit_log (deal_id, action, details) VALUES ($1, $2, $3)',
+            [dealId, 'deal_auto_approved', JSON.stringify({ total_approvals: Number(votes) })]
+        );
+
+        // Email всем участникам (вне транзакции — не критично)
+        const dealFull = await client.query(
+            `SELECT d.*, u.name AS initiator_name FROM deals d
+             LEFT JOIN users u ON d.initiator_id = u.id WHERE d.id = $1`, [dealId]
+        );
+        const allParticipants = await client.query(
+            `SELECT u.email, u.name FROM deal_participants dp
+             JOIN users u ON dp.user_id = u.id WHERE dp.deal_id = $1`, [dealId]
+        );
+        notifyDealClosed(dealFull.rows[0], allParticipants.rows, 'Согласовано',
+            'Автоматическое согласование: все участники проголосовали «за»');
+    }
+}
+
 // Голосование
 router.post('/deals/:id/vote', authRequired, async (req, res) => {
     const { id } = req.params;
     const { decision, comment, reservation } = req.body;
 
-    try {
-        // Проверяем: сделка active?
-        const dealResult = await pool.query('SELECT status FROM deals WHERE id = $1', [id]);
-        if (dealResult.rows.length === 0) return res.status(404).send('Сделка не найдена');
-        if (dealResult.rows[0].status !== 'active') {
-            return res.redirect(`/deals/${id}`);
-        }
+    if (!['approve', 'reject'].includes(decision)) {
+        return res.status(400).send('Некорректное значение решения');
+    }
 
-        // Проверяем: пользователь — согласующий?
-        const partResult = await pool.query(
+    if (decision === 'reject' && (!comment || !comment.trim())) {
+        return res.redirect(`/deals/${id}?error=reject_needs_comment`);
+    }
+
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+
+        const dealResult = await client.query('SELECT status FROM deals WHERE id = $1 FOR UPDATE', [id]);
+        if (dealResult.rows.length === 0) { await client.query('ROLLBACK'); return res.status(404).send('Сделка не найдена'); }
+        if (dealResult.rows[0].status !== 'active') { await client.query('ROLLBACK'); return res.redirect(`/deals/${id}`); }
+
+        const partResult = await client.query(
             "SELECT 1 FROM deal_participants WHERE deal_id = $1 AND user_id = $2 AND role IN ('approver', 'invited_approver')",
             [id, req.user.id]
         );
-        if (partResult.rows.length === 0) {
-            return res.status(403).send('Вы не являетесь согласующим по этой сделке');
-        }
+        if (partResult.rows.length === 0) { await client.query('ROLLBACK'); return res.status(403).send('Вы не являетесь согласующим по этой сделке'); }
 
-        // Проверяем: ещё не голосовал?
-        const existingVote = await pool.query(
-            'SELECT 1 FROM votes WHERE deal_id = $1 AND user_id = $2',
-            [id, req.user.id]
-        );
-        if (existingVote.rows.length > 0) {
-            return res.redirect(`/deals/${id}`);
-        }
+        const existingVote = await client.query('SELECT 1 FROM votes WHERE deal_id = $1 AND user_id = $2', [id, req.user.id]);
+        if (existingVote.rows.length > 0) { await client.query('ROLLBACK'); return res.redirect(`/deals/${id}`); }
 
-        // Reject требует комментарий
-        if (decision === 'reject' && (!comment || !comment.trim())) {
-            return res.redirect(`/deals/${id}?error=reject_needs_comment`);
-        }
-
-        await pool.query(
+        await client.query(
             'INSERT INTO votes (deal_id, user_id, decision, comment, reservation) VALUES ($1, $2, $3, $4, $5)',
             [id, req.user.id, decision, comment || null, reservation || null]
         );
-
-        await pool.query(
+        await client.query(
             'INSERT INTO audit_log (user_id, deal_id, action, details) VALUES ($1, $2, $3, $4)',
             [req.user.id, id, 'voted', JSON.stringify({ decision })]
         );
 
-        // Проверяем: все ли проголосовали?
-        const totalApprovers = await pool.query(
-            "SELECT COUNT(*) FROM deal_participants WHERE deal_id = $1 AND role IN ('approver', 'invited_approver')",
-            [id]
-        );
-        const totalVotes = await pool.query(
-            'SELECT COUNT(*) FROM votes WHERE deal_id = $1',
-            [id]
-        );
-
-        if (Number(totalVotes.rows[0].count) >= Number(totalApprovers.rows[0].count)) {
-            await pool.query(
-                'INSERT INTO audit_log (deal_id, action, details) VALUES ($1, $2, $3)',
-                [id, 'all_voted', JSON.stringify({ total: Number(totalVotes.rows[0].count) })]
-            );
-
-            // Если все проголосовали «approve» — автоматически закрываем сделку
-            const rejectCount = await pool.query(
-                "SELECT COUNT(*) FROM votes WHERE deal_id = $1 AND decision = 'reject'",
-                [id]
-            );
-            if (Number(rejectCount.rows[0].count) === 0) {
-                await pool.query(
-                    "UPDATE deals SET status = 'approved', close_comment = 'Автоматическое согласование: все участники проголосовали «за»', closed_at = NOW() WHERE id = $1",
-                    [id]
-                );
-                await pool.query(
-                    'INSERT INTO audit_log (deal_id, action, details) VALUES ($1, $2, $3)',
-                    [id, 'deal_auto_approved', JSON.stringify({ total_approvals: Number(totalVotes.rows[0].count) })]
-                );
-
-                // Email всем участникам
-                const dealFull = await pool.query(
-                    `SELECT d.*, u.name AS initiator_name FROM deals d
-                     LEFT JOIN users u ON d.initiator_id = u.id WHERE d.id = $1`, [id]
-                );
-                const allParticipants = await pool.query(
-                    `SELECT u.email, u.name FROM deal_participants dp
-                     JOIN users u ON dp.user_id = u.id WHERE dp.deal_id = $1`, [id]
-                );
-                notifyDealClosed(dealFull.rows[0], allParticipants.rows, 'Согласовано',
-                    'Автоматическое согласование: все участники проголосовали «за»');
-            }
-        }
+        await checkAutoApproval(client, id);
+        await client.query('COMMIT');
 
         res.redirect(`/deals/${id}`);
     } catch (err) {
+        await client.query('ROLLBACK');
         console.error('Vote error:', err);
         res.status(500).send('Ошибка сервера');
+    } finally {
+        client.release();
     }
 });
 
@@ -654,101 +612,52 @@ router.get('/vote/:token', async (req, res) => {
     const { token } = req.params;
 
     try {
-        const linkResult = await pool.query(
-            'SELECT * FROM magic_links WHERE token = $1',
-            [token]
-        );
-
-        if (linkResult.rows.length === 0) {
-            return res.status(404).send('Ссылка не найдена');
-        }
+        const linkResult = await pool.query('SELECT * FROM magic_links WHERE token = $1', [token]);
+        if (linkResult.rows.length === 0) return res.status(404).send('Ссылка не найдена');
 
         const link = linkResult.rows[0];
-
-        if (link.used) {
-            return res.redirect(`/deals/${link.deal_id}`);
-        }
-
+        if (link.used) return res.redirect(`/deals/${link.deal_id}`);
         if (new Date(link.expires_at) < new Date()) {
             return res.status(410).send('Ссылка истекла. Войдите в систему для голосования.');
         }
 
-        // Проверяем: сделка active?
-        const dealResult = await pool.query('SELECT status FROM deals WHERE id = $1', [link.deal_id]);
-        if (dealResult.rows.length === 0 || dealResult.rows[0].status !== 'active') {
-            return res.redirect(`/deals/${link.deal_id}`);
-        }
+        const client = await pool.connect();
+        try {
+            await client.query('BEGIN');
 
-        // Проверяем: ещё не голосовал?
-        const existingVote = await pool.query(
-            'SELECT 1 FROM votes WHERE deal_id = $1 AND user_id = $2',
-            [link.deal_id, link.user_id]
-        );
-        if (existingVote.rows.length > 0) {
-            await pool.query('UPDATE magic_links SET used = TRUE WHERE id = $1', [link.id]);
-            return res.redirect(`/deals/${link.deal_id}`);
-        }
-
-        // Голосуем approve
-        await pool.query(
-            'INSERT INTO votes (deal_id, user_id, decision, comment) VALUES ($1, $2, $3, $4)',
-            [link.deal_id, link.user_id, 'approve', 'Согласовано по ссылке из email']
-        );
-
-        // Отмечаем ссылку как использованную
-        await pool.query('UPDATE magic_links SET used = TRUE WHERE id = $1', [link.id]);
-
-        // Аудит
-        await pool.query(
-            'INSERT INTO audit_log (user_id, deal_id, action, details) VALUES ($1, $2, $3, $4)',
-            [link.user_id, link.deal_id, 'voted', JSON.stringify({ decision: 'approve', via: 'magic_link' })]
-        );
-
-        // Проверяем: все ли проголосовали? → авто-approve
-        const totalApprovers = await pool.query(
-            "SELECT COUNT(*) FROM deal_participants WHERE deal_id = $1 AND role IN ('approver', 'invited_approver')",
-            [link.deal_id]
-        );
-        const totalVotes = await pool.query(
-            'SELECT COUNT(*) FROM votes WHERE deal_id = $1',
-            [link.deal_id]
-        );
-
-        if (Number(totalVotes.rows[0].count) >= Number(totalApprovers.rows[0].count)) {
-            await pool.query(
-                'INSERT INTO audit_log (deal_id, action, details) VALUES ($1, $2, $3)',
-                [link.deal_id, 'all_voted', JSON.stringify({ total: Number(totalVotes.rows[0].count) })]
-            );
-
-            const rejectCount = await pool.query(
-                "SELECT COUNT(*) FROM votes WHERE deal_id = $1 AND decision = 'reject'",
-                [link.deal_id]
-            );
-            if (Number(rejectCount.rows[0].count) === 0) {
-                await pool.query(
-                    "UPDATE deals SET status = 'approved', close_comment = 'Автоматическое согласование: все участники проголосовали «за»', closed_at = NOW() WHERE id = $1",
-                    [link.deal_id]
-                );
-                await pool.query(
-                    'INSERT INTO audit_log (deal_id, action, details) VALUES ($1, $2, $3)',
-                    [link.deal_id, 'deal_auto_approved', JSON.stringify({ total_approvals: Number(totalVotes.rows[0].count) })]
-                );
-
-                // Email всем участникам
-                const dealFull = await pool.query(
-                    `SELECT d.*, u.name AS initiator_name FROM deals d
-                     LEFT JOIN users u ON d.initiator_id = u.id WHERE d.id = $1`, [link.deal_id]
-                );
-                const allParticipants = await pool.query(
-                    `SELECT u.email, u.name FROM deal_participants dp
-                     JOIN users u ON dp.user_id = u.id WHERE dp.deal_id = $1`, [link.deal_id]
-                );
-                notifyDealClosed(dealFull.rows[0], allParticipants.rows, 'Согласовано',
-                    'Автоматическое согласование: все участники проголосовали «за»');
+            const dealResult = await client.query('SELECT status FROM deals WHERE id = $1 FOR UPDATE', [link.deal_id]);
+            if (dealResult.rows.length === 0 || dealResult.rows[0].status !== 'active') {
+                await client.query('ROLLBACK');
+                return res.redirect(`/deals/${link.deal_id}`);
             }
-        }
 
-        res.redirect(`/deals/${link.deal_id}`);
+            const existingVote = await client.query('SELECT 1 FROM votes WHERE deal_id = $1 AND user_id = $2', [link.deal_id, link.user_id]);
+            if (existingVote.rows.length > 0) {
+                await client.query('UPDATE magic_links SET used = TRUE WHERE id = $1', [link.id]);
+                await client.query('COMMIT');
+                return res.redirect(`/deals/${link.deal_id}`);
+            }
+
+            await client.query(
+                'INSERT INTO votes (deal_id, user_id, decision, comment) VALUES ($1, $2, $3, $4)',
+                [link.deal_id, link.user_id, 'approve', 'Согласовано по ссылке из email']
+            );
+            await client.query('UPDATE magic_links SET used = TRUE WHERE id = $1', [link.id]);
+            await client.query(
+                'INSERT INTO audit_log (user_id, deal_id, action, details) VALUES ($1, $2, $3, $4)',
+                [link.user_id, link.deal_id, 'voted', JSON.stringify({ decision: 'approve', via: 'magic_link' })]
+            );
+
+            await checkAutoApproval(client, link.deal_id);
+            await client.query('COMMIT');
+
+            res.redirect(`/deals/${link.deal_id}`);
+        } catch (err) {
+            await client.query('ROLLBACK');
+            throw err;
+        } finally {
+            client.release();
+        }
     } catch (err) {
         console.error('Magic link vote error:', err);
         res.status(500).send('Ошибка сервера');

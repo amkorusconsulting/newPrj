@@ -1,254 +1,42 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>КОРУС Крупные сделки — Пользователи</title>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+    <%- include('partials/head') %>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-
-        body {
-            font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: #f2f2f2;
-            min-height: 100vh;
-        }
-
-        .header {
-            background: #121239;
-            color: #fff;
-            padding: 16px 32px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .header h1 { font-size: 16px; font-weight: 700; letter-spacing: 0.3px; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
-        .header h1 .brand-k { color: #F9423A; }
-        .header h1 .brand-sub { font-weight: 600; font-size: 14px; color: rgba(255,255,255,0.55); }
-
-        .header-right {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-            font-size: 14px;
-        }
-
-        .header-right a {
-            color: rgba(255,255,255,0.6);
-            text-decoration: none;
-        }
-
-        .header-right a:hover { color: #fff; }
-
-        .badge {
-            background: rgba(255,255,255,0.12);
-            padding: 4px 10px;
-            border-radius: 12px;
-            font-size: 12px;
-        }
-
-        nav {
-            background: #fff;
-            border-bottom: 1px solid #e0e0e0;
-            padding: 0 32px;
-        }
-
-        nav a {
-            display: inline-block;
-            padding: 12px 16px;
-            text-decoration: none;
-            color: #666;
-            font-size: 14px;
-            font-weight: 500;
-            border-bottom: 2px solid transparent;
-        }
-
-        nav a:hover { color: #121239; }
-        nav a.active { color: #121239; border-bottom-color: #F9423A; }
-
-        .container {
-            max-width: 1100px;
-            margin: 32px auto;
-            padding: 0 24px;
-        }
-
-        .alert {
-            padding: 12px 16px;
-            border-radius: 8px;
-            font-size: 14px;
-            margin-bottom: 20px;
-        }
-
+        .alert { padding: 12px 16px; border-radius: 8px; font-size: 14px; margin-bottom: 20px; }
         .alert-error { background: #fee; color: #c33; }
         .alert-success { background: #efe; color: #2a7a2a; }
-
-        .card {
-            background: #fff;
-            border-radius: 8px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            padding: 24px;
-            margin-bottom: 24px;
-        }
-
-        .card h2 {
-            font-size: 16px;
-            color: #333;
-            margin-bottom: 16px;
-        }
-
-        .form-row {
-            display: flex;
-            gap: 12px;
-            flex-wrap: wrap;
-            align-items: flex-end;
-        }
-
-        .form-group {
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-        }
-
-        .form-group label {
-            font-size: 13px;
-            color: #666;
-            font-weight: 500;
-        }
-
-        .form-group input {
-            padding: 8px 12px;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            font-size: 14px;
-            outline: none;
-        }
-
-        .form-group input:focus {
-            border-color: #002FA7;
-        }
-
-        .checkbox-group {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            padding-bottom: 4px;
-        }
-
-        .checkbox-group label {
-            font-size: 13px;
-            color: #666;
-        }
-
-        .btn {
-            padding: 8px 20px;
-            border: none;
-            border-radius: 6px;
-            font-size: 14px;
-            font-weight: 500;
-            cursor: pointer;
-            text-decoration: none;
-            display: inline-block;
-        }
-
-        .btn-primary { background: #002FA7; color: #fff; }
-        .btn-primary:hover { background: #0038c7; }
-
-        .btn-sm {
-            padding: 4px 12px;
-            font-size: 12px;
-        }
-
+        .card h2 { font-size: 16px; color: #333; margin-bottom: 16px; }
+        .form-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
+        .form-group { display: flex; flex-direction: column; gap: 4px; }
+        .form-group label { font-size: 13px; color: #666; font-weight: 500; }
+        .form-group input { padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; outline: none; }
+        .form-group input:focus { border-color: #002FA7; }
+        .checkbox-group { display: flex; align-items: center; gap: 6px; padding-bottom: 4px; }
+        .checkbox-group label { font-size: 13px; color: #666; }
         .btn-success { background: #2e7d32; color: #fff; }
         .btn-success:hover { background: #388e3c; }
-
-        .btn-danger { background: #F9423A; color: #fff; }
-        .btn-danger:hover { background: #e03830; }
-
         .btn-warning { background: #e65100; color: #fff; }
         .btn-warning:hover { background: #ef6c00; }
-
-        .btn-outline {
-            background: #fff;
-            color: #666;
-            border: 1px solid #ddd;
-        }
-
-        .btn-outline:hover {
-            background: #f5f5f5;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        th {
-            text-align: left;
-            padding: 10px 16px;
-            font-size: 13px;
-            color: #666;
-            font-weight: 600;
-            border-bottom: 1px solid #eee;
-        }
-
-        td {
-            padding: 10px 16px;
-            font-size: 14px;
-            color: #333;
-            border-bottom: 1px solid #f0f0f0;
-        }
-
+        table { width: 100%; border-collapse: collapse; }
+        th { text-align: left; padding: 10px 16px; font-size: 13px; color: #666; font-weight: 600; border-bottom: 1px solid #eee; }
+        td { padding: 10px 16px; font-size: 14px; color: #333; border-bottom: 1px solid #f0f0f0; }
         tr:hover { background: #f9fbfd; }
-
-        .tag {
-            display: inline-block;
-            padding: 2px 8px;
-            border-radius: 10px;
-            font-size: 11px;
-            font-weight: 600;
-        }
-
+        .tag { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
         .tag-admin { background: #e0e7ff; color: #002FA7; }
         .tag-approver { background: #e8f5e9; color: #2e7d32; }
         .tag-inactive { background: #fce4ec; color: #c62828; }
-
         .actions { display: flex; gap: 6px; }
-
         .actions form { display: inline; }
-
-        .pwd-form {
-            display: none;
-            margin-top: 6px;
-        }
-
+        .pwd-form { display: none; margin-top: 6px; }
         .pwd-form.open { display: flex; gap: 4px; }
-
-        .pwd-form input {
-            padding: 4px 8px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 12px;
-            width: 140px;
-        }
-
-        /* === Mobile === */
+        .pwd-form input { padding: 4px 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px; width: 140px; }
         @media (max-width: 768px) {
-            .header { padding: 12px 16px; }
-            .header h1 { font-size: 14px; }
-            .header h1 .brand-sub { font-size: 11px; }
-            .header-right { gap: 10px; font-size: 13px; }
-            .header-right .badge { display: none; }
-            nav { padding: 0 16px; overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; }
-            nav a { padding: 10px 12px; font-size: 13px; }
-            .container { margin: 16px auto; padding: 0 12px; }
-            .card { padding: 16px; }
             .form-row { flex-direction: column; gap: 12px; }
             .form-row .form-group { width: 100%; }
             .checkbox-group { padding-bottom: 0; }
             .actions { flex-wrap: wrap; }
-
-            /* Table → stacked on mobile */
             table, thead, tbody, th, td, tr { display: block; }
             thead { display: none; }
             tr { padding: 12px 0; border-bottom: 1px solid #eee; }
@@ -265,21 +53,8 @@
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1><span class="brand-name"><span class="brand-k">К</span>ОРУС</span> <span class="brand-sub">Крупные сделки</span></h1>
-        <div class="header-right">
-            <a href="/guide" target="_blank" title="Инструкция" style="width:24px; height:24px; display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,0.15); border-radius:50%; color:#fff; font-size:13px; font-weight:700; text-decoration:none;">?</a>
-            <span><%= user.name %></span>
-            <span class="badge">Администратор</span>
-            <a href="/logout">Выйти</a>
-        </div>
-    </div>
-
-    <nav>
-        <a href="/dashboard">Сделки</a>
-        <a href="/users" class="active">Пользователи</a>
-        <a href="/audit">Журнал</a>
-    </nav>
+    <%- include('partials/header') %>
+    <%- include('partials/nav', { activePage: 'users' }) %>
 
     <div class="container">
         <% if (error) { %>
@@ -292,7 +67,7 @@
         <div class="card">
             <h2>Новый пользователь</h2>
             <form method="POST" action="/users">
-                                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                 <div class="form-row">
                     <div class="form-group">
                         <label>Имя</label>
@@ -333,19 +108,11 @@
                             <td><%= u.name %></td>
                             <td><%= u.email %></td>
                             <td>
-                                <% if (u.is_admin) { %>
-                                    <span class="tag tag-admin">Админ</span>
-                                <% } %>
-                                <% if (u.is_permanent_approver) { %>
-                                    <span class="tag tag-approver">Согласующий</span>
-                                <% } %>
+                                <% if (u.is_admin) { %><span class="tag tag-admin">Админ</span><% } %>
+                                <% if (u.is_permanent_approver) { %><span class="tag tag-approver">Согласующий</span><% } %>
                             </td>
                             <td>
-                                <% if (u.is_active) { %>
-                                    Активен
-                                <% } else { %>
-                                    <span class="tag tag-inactive">Отключён</span>
-                                <% } %>
+                                <% if (u.is_active) { %>Активен<% } else { %><span class="tag tag-inactive">Отключён</span><% } %>
                             </td>
                             <td>
                                 <div class="actions">
@@ -357,7 +124,6 @@
                                             </button>
                                         </form>
                                     <% } %>
-
                                     <% if (!u.is_permanent_approver) { %>
                                         <form method="POST" action="/users/<%= u.id %>/approver/add">
                                             <input type="hidden" name="_csrf" value="<%= csrfToken %>">
@@ -369,7 +135,6 @@
                                             <button class="btn btn-sm btn-danger">- Согласующий</button>
                                         </form>
                                     <% } %>
-
                                     <button class="btn btn-sm btn-outline" onclick="togglePwd(<%= u.id %>)">Пароль</button>
                                 </div>
                                 <div class="pwd-form" id="pwd-<%= u.id %>">
@@ -388,11 +153,9 @@
     </div>
     <script>
         function togglePwd(id) {
-            const el = document.getElementById('pwd-' + id);
+            var el = document.getElementById('pwd-' + id);
             el.classList.toggle('open');
-            if (el.classList.contains('open')) {
-                el.querySelector('input').focus();
-            }
+            if (el.classList.contains('open')) el.querySelector('input').focus();
         }
     </script>
 </body>

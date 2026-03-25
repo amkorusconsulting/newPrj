@@ -69,4 +69,17 @@ function verifyCsrf(req, res, next) {
     next();
 }
 
-module.exports = { authRequired, adminRequired, revokeToken, generateCsrf, verifyCsrf };
+// Проверка доступа к сделке (участник или админ)
+function checkDealAccess(req, res, next) {
+    const pool = require('../db');
+    const dealId = req.params.id;
+    if (req.user.is_admin) return next();
+    pool.query('SELECT 1 FROM deal_participants WHERE deal_id = $1 AND user_id = $2', [dealId, req.user.id])
+        .then(result => {
+            if (result.rows.length === 0) return res.status(403).send('Доступ запрещён');
+            next();
+        })
+        .catch(() => res.status(500).send('Ошибка сервера'));
+}
+
+module.exports = { authRequired, adminRequired, revokeToken, generateCsrf, verifyCsrf, checkDealAccess };

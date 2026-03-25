@@ -6,7 +6,7 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 const FROM = 'КОРУС Крупные сделки <onboarding@resend.dev>';
 const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
 // Тестовый режим: все письма на один адрес (убрать после привязки домена в Resend)
-const TEST_RECIPIENT = 'am.korusconsulting@gmail.com';
+const TEST_RECIPIENT = process.env.NODE_ENV === 'production' ? null : 'am.korusconsulting@gmail.com';
 
 function buildSubject(deal) {
     const amount = deal.amount
