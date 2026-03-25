@@ -90,6 +90,27 @@ describe('Авторизация', () => {
         expect(res.text).toContain('Неверный email или пароль');
     });
 
+    test('POST /login — не блокируется CSRF (нет cookie до авторизации)', async () => {
+        const res = await request(app)
+            .post('/login')
+            .type('form')
+            .send({ email: testEmail, password: testPassword, _csrf: 'invalid' });
+
+        // Должен залогинить, а не вернуть 403
+        expect(res.status).toBe(302);
+        expect(res.headers.location).toBe('/dashboard');
+    });
+
+    test('POST /login — redirect сохраняется после успешного входа', async () => {
+        const res = await request(app)
+            .post('/login')
+            .type('form')
+            .send({ email: testEmail, password: testPassword, redirect: '/deals/1' });
+
+        expect(res.status).toBe(302);
+        expect(res.headers.location).toBe('/deals/1');
+    });
+
     test('GET /logout — очищает cookie и редиректит', async () => {
         const res = await request(app).get('/logout');
         expect(res.status).toBe(302);
