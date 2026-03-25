@@ -179,8 +179,8 @@
                                         <td>
                                             <%= v.reservation || '—' %>
                                             <% if (String(v.user_id) === String(user.id) && deal.status === 'active') { %>
-                                                <form method="POST" action="/deals/<%= deal.id %>
-                                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">/reservation" style="margin-top:6px; display:flex; gap:4px;">
+                                                <form method="POST" action="/deals/<%= deal.id %>/reservation" style="margin-top:6px; display:flex; gap:4px;">
+                                                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                                                     <input type="text" name="reservation" placeholder="Добавить/изменить оговорку" value="<%= v.reservation || '' %>" style="flex:1; padding:4px 8px; border:1px solid #ddd; border-radius:4px; font-size:12px;">
                                                     <button class="btn btn-sm btn-outline">Сохранить</button>
                                                 </form>
@@ -197,8 +197,8 @@
                     <% if (canVote) { %>
                         <div style="margin-top:16px; padding-top:16px; border-top:1px solid #eee;">
                             <h4 style="font-size:14px; margin-bottom:12px; color:#333;">Ваше решение</h4>
-                            <form method="POST" action="/deals/<%= deal.id %>
-                                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">/vote" id="voteForm">
+                            <form method="POST" action="/deals/<%= deal.id %>/vote" id="voteForm">
+                                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                                 <div style="display:flex; gap:8px; margin-bottom:12px;">
                                     <label style="display:flex; align-items:center; gap:4px; cursor:pointer;">
                                         <input type="radio" name="decision" value="approve" required> Согласовать
@@ -242,8 +242,8 @@
                     <div class="card">
                         <h3>Запуск согласования</h3>
                         <p style="font-size:13px; color:#666; margin-bottom:12px;">После запуска согласующие получат уведомления и смогут голосовать.</p>
-                        <form method="POST" action="/deals/<%= deal.id %>
-                                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">/start">
+                        <form method="POST" action="/deals/<%= deal.id %>/start">
+                                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                             <button class="btn btn-primary">Запустить согласование</button>
                         </form>
                     </div>
@@ -253,8 +253,8 @@
                     <div class="card">
                         <h3>Итоговое решение</h3>
                         <p style="font-size:13px; color:#666; margin-bottom:12px;">Проставить итоговый статус и закрыть сделку.</p>
-                        <form method="POST" action="/deals/<%= deal.id %>
-                                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">/close">
+                        <form method="POST" action="/deals/<%= deal.id %>/close">
+                                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                             <div style="display:flex; gap:8px; margin-bottom:12px;">
                                 <label style="display:flex; align-items:center; gap:4px; cursor:pointer;">
                                     <input type="radio" name="final_status" value="approved" required>
@@ -312,9 +312,9 @@
                                     </span>
                                 </div>
                                 <% if (canUpload) { %>
-                                    <form method="POST" action="/deals/<%= deal.id %>
-                                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">/documents/<%= doc.id %>/delete" style="display:inline"
+                                    <form method="POST" action="/deals/<%= deal.id %>/documents/<%= doc.id %>/delete" style="display:inline"
                                           onsubmit="return confirm('Удалить документ?')">
+                                        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                                         <button class="btn btn-sm btn-danger">×</button>
                                     </form>
                                 <% } %>
@@ -333,8 +333,8 @@
                             <% } %>
 
                             <% if (canComment) { %>
-                                <form method="POST" action="/deals/<%= deal.id %>
-                                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">/documents/<%= doc.id %>/comments" style="display:flex; gap:6px; margin-top:6px; margin-left:16px;">
+                                <form method="POST" action="/deals/<%= deal.id %>/documents/<%= doc.id %>/comments" style="display:flex; gap:6px; margin-top:6px; margin-left:16px;">
+                                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                                     <input type="text" name="text" placeholder="Комментарий..." required
                                            style="flex:1; padding:5px 10px; border:1px solid #ddd; border-radius:4px; font-size:12px;">
                                     <button class="btn btn-sm btn-outline">Отправить</button>
@@ -451,16 +451,16 @@
                                     </td>
                                     <td style="white-space:nowrap;">
                                         <% if (user.is_admin && !['closed','approved','rejected','withdrawn'].includes(deal.status)) { %>
-                                            <form method="POST" action="/deals/<%= deal.id %>
-                                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">/participants/<%= p.id %>/remove" style="display:inline"
+                                            <form method="POST" action="/deals/<%= deal.id %>/participants/<%= p.id %>/remove" style="display:inline"
                                                   <% if (p.role === 'initiator') { %>onsubmit="return confirm('Удалить инициатора? Не забудьте назначить нового.')"<% } %>>
+                                                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                                                 <button class="btn btn-sm btn-outline" title="Исключить из участников">×</button>
                                             </form>
                                         <% } %>
                                         <% if (user.is_admin && deal.status === 'active' && p.role !== 'initiator') { %>
-                                            <form method="POST" action="/deals/<%= deal.id %>
-                                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">/participants/<%= p.user_id %>/resend" style="display:inline"
+                                            <form method="POST" action="/deals/<%= deal.id %>/participants/<%= p.user_id %>/resend" style="display:inline"
                                                   onsubmit="this.querySelector('button').disabled=true;">
+                                                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                                                 <button class="btn btn-sm btn-danger" title="Повторно отправить письмо">✉</button>
                                             </form>
                                         <% } %>
@@ -472,8 +472,8 @@
 
                     <% if (user.is_admin && !['closed','approved','rejected','withdrawn'].includes(deal.status)) { %>
                         <% const existingIds = participants.map(p => p.user_id); %>
-                        <form method="POST" action="/deals/<%= deal.id %>
-                                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">/participants" class="add-form">
+                        <form method="POST" action="/deals/<%= deal.id %>/participants" class="add-form">
+                            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                             <select name="user_id" required>
                                 <option value="">Пользователь...</option>
                                 <% allUsers.forEach(u => { %>
@@ -495,8 +495,8 @@
                 <% if (deal.status === 'active' && (myRole === 'initiator' || user.is_admin)) { %>
                     <div class="card">
                         <h3>Отзыв сделки</h3>
-                        <form method="POST" action="/deals/<%= deal.id %>
-                                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">/withdraw">
+                        <form method="POST" action="/deals/<%= deal.id %>/withdraw">
+                                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                             <textarea name="comment" required placeholder="Причина отзыва (обязательно)" rows="2"
                                       style="width:100%; padding:8px; border:1px solid #ddd; border-radius:6px; font-size:13px; font-family:inherit; margin-bottom:8px; resize:vertical;"></textarea>
                             <button class="btn btn-danger">Отозвать сделку</button>
