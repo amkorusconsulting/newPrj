@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <title>КОРУС Крупные сделки — Промпт ИИ</title>
+    <%- include('partials/head') %>
+    <style>
+        .card h2 { font-size: 18px; color: #333; margin-bottom: 8px; }
+        .card p { font-size: 13px; color: #888; margin-bottom: 16px; }
+        .prompt-textarea {
+            width: 100%; min-height: 300px; padding: 14px; border: 1px solid #ddd;
+            border-radius: 8px; font-size: 14px; font-family: 'Montserrat', monospace;
+            line-height: 1.6; resize: vertical; outline: none;
+        }
+        .prompt-textarea:focus { border-color: #002FA7; }
+        .btn-row { display: flex; gap: 12px; margin-top: 16px; align-items: center; }
+        .alert-success { background: #efe; color: #2a7a2a; padding: 10px 16px; border-radius: 8px; font-size: 14px; margin-bottom: 16px; }
+        .meta { font-size: 12px; color: #999; margin-top: 8px; }
+    </style>
+</head>
+<body>
+    <%- include('partials/header') %>
+    <%- include('partials/nav', { activePage: 'ai-prompt' }) %>
+
+    <div class="container" style="max-width:800px;">
+        <% if (success) { %>
+            <div class="alert-success"><%= success %></div>
+        <% } %>
+
+        <div class="card">
+            <h2>Промпт для ИИ-анализа сделок</h2>
+            <p>Этот промпт используется при отправке сделки на согласование. ИИ получает его вместе с текстами загруженных документов и данными сделки, и формирует раздел «Мнение ИИ» в карточке сделки.</p>
+
+            <form method="POST" action="/ai-prompt">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                <textarea name="prompt" class="prompt-textarea" placeholder="Введите промпт для ИИ..."><%= prompt ? prompt.prompt : '' %></textarea>
+                <div class="btn-row">
+                    <button type="submit" class="btn btn-primary">Сохранить</button>
+                </div>
+            </form>
+
+            <% if (prompt && prompt.updated_at) { %>
+                <div class="meta">Последнее обновление: <%= new Date(prompt.updated_at).toLocaleString('ru-RU') %></div>
+            <% } %>
+        </div>
+    </div>
+</body>
+</html>

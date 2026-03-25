@@ -3,6 +3,7 @@ const crypto = require('crypto');
 const pool = require('../db');
 const { authRequired, adminRequired, checkDealAccess } = require('../middleware/auth');
 const { notifyApprovalStarted, notifyDealClosed, notifyDealWithdrawn } = require('../services/mailer');
+const { generateOpinion } = require('../services/ai-opinion');
 
 const router = express.Router();
 
@@ -83,7 +84,7 @@ router.post('/deals', authRequired, adminRequired, async (req, res) => {
 router.get('/deals/:id', authRequired, checkDealAccess, async (req, res) => {
     const { id } = req.params;
     try {
-        const [dealResult, participantsResult, docsResult, commentsResult, votesResult, myRoleResult, allUsersResult] = await Promise.all([
+        const [dealResult, participantsResult, docsResult, commentsResult, votesResult, myRoleResult, allUsersResult, aiOpinionResult] = await Promise.all([
             pool.query(
                 `SELECT d.*, u.name AS initiator_name, u.email AS initiator_email,
                         c.name AS created_by_name
@@ -116,6 +117,7 @@ router.get('/deals/:id', authRequired, checkDealAccess, async (req, res) => {
             ),
             pool.query('SELECT role FROM deal_participants WHERE deal_id = $1 AND user_id = $2', [id, req.user.id]),
             pool.query('SELECT id, name, email FROM users WHERE is_active = TRUE ORDER BY name'),
+            pool.query('SELECT * FROM ai_opinions WHERE deal_id = $1 ORDER BY created_at DESC LIMIT 1', [id]),
         ]);
 
         if (dealResult.rows.length === 0) {
@@ -137,6 +139,7 @@ router.get('/deals/:id', authRequired, checkDealAccess, async (req, res) => {
             myRole: myRoleResult.rows[0]?.role || (req.user.is_admin ? 'admin' : null),
             allUsers: allUsersResult.rows,
             commentsByDoc,
+            aiOpinion: aiOpinionResult.rows[0] || null,
         });
     } catch (err) {
         console.error('Deal view error:', err);
@@ -480,6 +483,9 @@ router.post('/deals/:id/start', authRequired, async (req, res) => {
             'INSERT INTO audit_log (user_id, deal_id, action) VALUES ($1, $2, $3)',
             [req.user.id, id, 'deal_started']
         );
+
+        // Генерация мнения ИИ (асинхронно, не блокирует ответ)
+        generateOpinion(id);
 
         // Email согласующим с magic-ссылками
         const approversResult = await pool.query(

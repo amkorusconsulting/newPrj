@@ -102,6 +102,23 @@ CREATE TABLE audit_log (
     created_at TIMESTAMP DEFAULT NOW()
 );
 
+-- Промпт ИИ (редактируется администратором)
+CREATE TABLE ai_prompt (
+    id SERIAL PRIMARY KEY,
+    prompt TEXT NOT NULL,
+    updated_by INTEGER REFERENCES users(id),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Мнения ИИ по сделкам
+CREATE TABLE ai_opinions (
+    id SERIAL PRIMARY KEY,
+    deal_id INTEGER NOT NULL REFERENCES deals(id),
+    opinion TEXT NOT NULL,
+    model VARCHAR(100),
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
 -- Индексы
 CREATE INDEX idx_deal_participants_deal ON deal_participants(deal_id);
 CREATE INDEX idx_deal_participants_user ON deal_participants(user_id);
@@ -112,6 +129,7 @@ CREATE INDEX idx_comments_deal ON comments(deal_id);
 CREATE INDEX idx_audit_log_deal ON audit_log(deal_id);
 CREATE INDEX idx_audit_log_user ON audit_log(user_id);
 CREATE INDEX idx_magic_links_token ON magic_links(token);
+CREATE INDEX idx_ai_opinions_deal ON ai_opinions(deal_id);
 CREATE INDEX idx_deals_initiator ON deals(initiator_id);
 CREATE INDEX idx_deals_status ON deals(status);
 CREATE INDEX idx_audit_log_created ON audit_log(created_at DESC);

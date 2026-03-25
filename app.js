@@ -12,6 +12,7 @@ const documentsRoutes = require('./routes/documents');
 const commentsRoutes = require('./routes/comments');
 const auditRoutes = require('./routes/audit');
 const chatRoutes = require('./routes/chat');
+const aiPromptRoutes = require('./routes/ai-prompt');
 
 const app = express();
 
@@ -65,6 +66,7 @@ app.use(documentsRoutes);
 app.use(commentsRoutes);
 app.use(auditRoutes);
 app.use(chatRoutes);
+app.use(aiPromptRoutes);
 
 // 404
 app.use((req, res) => {

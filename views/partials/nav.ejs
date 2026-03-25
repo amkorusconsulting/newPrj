@@ -3,5 +3,6 @@
     <% if (user.is_admin) { %>
         <a href="/users" <% if (typeof activePage !== 'undefined' && activePage === 'users') { %>class="active"<% } %>>Пользователи</a>
         <a href="/audit" <% if (typeof activePage !== 'undefined' && activePage === 'audit') { %>class="active"<% } %>>Журнал</a>
+        <a href="/ai-prompt" <% if (typeof activePage !== 'undefined' && activePage === 'ai-prompt') { %>class="active"<% } %>>Промпт ИИ</a>
     <% } %>
 </nav>

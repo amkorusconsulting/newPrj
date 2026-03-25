@@ -28,6 +28,7 @@ afterAll(async () => {
         await pool.query('DELETE FROM audit_log WHERE deal_id = ANY($1)', [dealIds]);
         await pool.query('DELETE FROM votes WHERE deal_id = ANY($1)', [dealIds]);
         await pool.query('DELETE FROM comments WHERE deal_id = ANY($1)', [dealIds]);
+        await pool.query('DELETE FROM ai_opinions WHERE deal_id = ANY($1)', [dealIds]);
         await pool.query('DELETE FROM magic_links WHERE deal_id = ANY($1)', [dealIds]);
         await pool.query('DELETE FROM documents WHERE deal_id = ANY($1)', [dealIds]);
         await pool.query('DELETE FROM deal_participants WHERE deal_id = ANY($1)', [dealIds]);
