@@ -66,4 +66,23 @@ app.use(commentsRoutes);
 app.use(auditRoutes);
 app.use(chatRoutes);
 
+// 404
+app.use((req, res) => {
+    res.status(404).render('error', {
+        status: 404,
+        title: 'Страница не найдена',
+        message: 'Запрошенная страница не существует или была удалена.',
+    });
+});
+
+// 500
+app.use((err, req, res, _next) => {
+    console.error('Unhandled error:', err);
+    res.status(500).render('error', {
+        status: 500,
+        title: 'Ошибка сервера',
+        message: 'Произошла внутренняя ошибка. Попробуйте позже или обратитесь к администратору.',
+    });
+});
+
 module.exports = app;
